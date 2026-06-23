@@ -293,10 +293,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
                     GDS Radar Track: Active
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-3 relative z-10">
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 mt-3 relative z-10 overflow-visible">
                     
                     {/* Departure Node Selector */}
-                    <div className="flex-1 w-full min-w-0 relative">
+                    <div className="flex-1 min-w-0">
                       <AirportSelector
                         label="Departure Station"
                         value={searchQuery.from}
@@ -305,29 +305,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
                       />
                     </div>
 
-                    {/* Cockpit Arc Connector & Swap Switch */}
-                    <div className="flex flex-col items-center justify-center shrink-0 w-16 h-12 relative my-2 sm:my-0">
-                      {/* SVG Flight Path Arc */}
-                      <svg className="absolute inset-0 w-full h-full text-brand-cyan/20 pointer-events-none" viewBox="0 0 100 50" fill="none">
-                        <path d="M 10 35 Q 50 10 90 35" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
+                    {/* SVG Flight Path Arc - only visible on desktop row view */}
+                    <div className="hidden sm:block absolute left-[15%] right-[15%] top-1/2 -translate-y-1/2 h-12 pointer-events-none z-0">
+                      <svg className="w-full h-full text-brand-cyan/20" viewBox="0 0 100 50" fill="none" preserveAspectRatio="none">
+                        <path d="M 5 35 Q 50 5 95 35" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
                         <circle r="3.5" fill="#0ea5e9" className="animate-pulse">
-                          <animateMotion dur="4s" repeatCount="indefinite" path="M 10 35 Q 50 10 90 35" />
+                          <animateMotion dur="4s" repeatCount="indefinite" path="M 5 35 Q 50 5 95 35" />
                         </circle>
                       </svg>
-                      
-                      {/* Interactive Swap Control Switch */}
-                      <button
-                        type="button"
-                        onClick={handleSwapAirports}
-                        className="w-8 h-8 rounded-full bg-slate-900 border border-white/10 hover:border-brand-cyan text-brand-cyan hover:text-white flex items-center justify-center shadow-lg transition-all duration-300 hover:rotate-180 active:scale-95 cursor-pointer z-20 hover:shadow-brand-cyan/25"
-                        title="Swap Airports"
-                      >
-                        <ArrowLeftRight className="w-3.5 h-3.5" />
-                      </button>
                     </div>
 
                     {/* Destination Node Selector */}
-                    <div className="flex-1 w-full min-w-0 relative">
+                    <div className="flex-1 min-w-0">
                       <AirportSelector
                         label="Destination Station"
                         value={searchQuery.to}
@@ -335,6 +324,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
                         placeholder="Arrival airport..."
                         excludeCode={searchQuery.from}
                       />
+                    </div>
+
+                    {/* Centered Swap Switch (Overlaps boundary on both mobile stack & desktop row) */}
+                    <div className="absolute left-1/2 top-[55%] sm:top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                      <button
+                        type="button"
+                        onClick={handleSwapAirports}
+                        className="w-8 h-8 rounded-full bg-slate-900 border border-white/10 hover:border-brand-cyan text-brand-cyan hover:text-white flex items-center justify-center shadow-lg transition-all duration-300 hover:rotate-180 active:scale-95 cursor-pointer hover:shadow-brand-cyan/25"
+                        title="Swap Airports"
+                      >
+                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                      </button>
                     </div>
 
                   </div>
