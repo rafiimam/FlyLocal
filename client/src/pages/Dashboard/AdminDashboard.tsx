@@ -2,17 +2,25 @@ import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { approveAgency, adminApproveDepositBalance } from '../../store/authSlice';
 import { approvePendingDeposit, adjustGlobalCommission } from '../../store/bookingSlice';
+import { setHotelMarkupValue } from '../../store/hotelSlice';
+import { setTourMarkupValue } from '../../store/tourSlice';
+import { ServiceTabs } from '../../components/shared/ServiceTabs';
+import { StatusBadge } from '../../components/shared/StatusBadge';
+import { HOTELS } from '../../data/hotelData';
+import { TOUR_PACKAGES } from '../../data/tourData';
+
 import { 
   Building2, 
   DollarSign, 
   FileText, 
-  Sliders, 
   CheckCircle, 
   ShieldCheck, 
   BarChart3, 
   Percent, 
   Activity, 
-  UserCheck
+  UserCheck,
+  Settings,
+  Plus
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -25,13 +33,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
   // Select Redux States
   const agent = useAppSelector((state) => state.auth.agent);
   const ledger = useAppSelector((state) => state.booking.ledger);
-  const bookings = useAppSelector((state) => state.booking.bookings);
+  
+  // Bookings lists
+  const flightBookings = useAppSelector((state) => state.booking.bookings);
+  const hotelBookings = useAppSelector((state) => state.hotel.hotelBookings);
+  const tourBookings = useAppSelector((state) => state.tour.tourBookings);
+
   const pendingAgencies = useAppSelector((state) => state.auth.pendingAgencies);
   const commissionRate = useAppSelector((state) => state.booking.commissionRate);
+  const hotelMarkup = useAppSelector((state) => state.hotel.markupValue);
+  const tourMarkup = useAppSelector((state) => state.tour.markupValue);
 
   // Settings State
   const [comValue, setComValue] = useState(commissionRate * 100);
+  const [hotMarkupVal, setHotMarkupVal] = useState(hotelMarkup);
+  const [trMarkupVal, setTrMarkupVal] = useState(tourMarkup);
   const [settingsSaved, setSettingsSaved] = useState(false);
+
+  // local active logs tab
+  const [activeLogsTab, setActiveLogsTab] = useState<'flights' | 'hotels' | 'tours'>('flights');
 
   // Status updates
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
@@ -44,35 +64,39 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
   );
 
   // Stats Calculations
-  const totalBookingsCount = bookings.length;
-  const totalVolume = bookings.reduce((sum, b) => sum + b.totalClientPaid, 0);
-  const totalAgentProfit = bookings.reduce((sum, b) => sum + b.agentProfit, 0);
+  const totalBookingsCount = flightBookings.length + hotelBookings.length + tourBookings.length;
+  const totalVolume = 
+    flightBookings.reduce((sum, b) => sum + b.totalClientPaid, 0) +
+    hotelBookings.reduce((sum, b) => sum + b.totalClientPaid, 0) +
+    tourBookings.reduce((sum, b) => sum + b.totalClientPaid, 0);
+
+  const totalAgentProfit = 
+    flightBookings.reduce((sum, b) => sum + b.agentProfit, 0) +
+    hotelBookings.reduce((sum, b) => sum + b.agentProfit, 0) +
+    tourBookings.reduce((sum, b) => sum + b.agentProfit, 0);
   
   // Calculate verified agents vs pending
   const activeAgenciesCount = 12; // Static baseline + approved
   const pendingAgenciesCount = pendingAgencies.length;
 
   const handleApproveDeposit = (txnId: string, amount: number) => {
-    // 1. Mark transaction 'Success' in ledger
     dispatch(approvePendingDeposit(txnId));
-    // 2. Increase the Agent's wallet balance
     dispatch(adminApproveDepositBalance(amount));
-
     setActionSuccessMsg(`Approved bank deposit slip BDT ${amount.toLocaleString()} successfully. Balance updated.`);
     setTimeout(() => setActionSuccessMsg(null), 5000);
   };
 
   const handleApproveAgency = (agencyId: string, companyName: string) => {
-    // Verify agency
     dispatch(approveAgency(agencyId));
-
     setActionSuccessMsg(`Agency "${companyName}" registration verified. Credentials issued via SMTP.`);
     setTimeout(() => setActionSuccessMsg(null), 5000);
   };
 
-  const handleSaveCommission = (e: React.FormEvent) => {
+  const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     dispatch(adjustGlobalCommission(comValue / 100));
+    dispatch(setHotelMarkupValue(hotMarkupVal));
+    dispatch(setTourMarkupValue(trMarkupVal));
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 3000);
   };
@@ -91,9 +115,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
       {/* 1. Portal Overview Stats Tab */}
       {activeTab === 'admin_overview' && (
         <div className="space-y-6">
-          {/* Analytics Widgets */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            
             <div className="glass-card rounded-2xl p-5 border-white/5 space-y-2">
               <div className="flex justify-between items-center text-slate-400">
                 <span className="text-xs font-semibold uppercase tracking-wider">Total Sales Volume</span>
@@ -112,7 +134,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
               </div>
               <div>
                 <span className="text-xl font-bold font-display text-emerald-400">৳{(87500 + totalAgentProfit).toLocaleString()}</span>
-                <span className="text-[10px] text-slate-500 block mt-1">API commissions + markups</span>
+                <span className="text-[10px] text-slate-500 block mt-1">API commissions + margins</span>
               </div>
             </div>
 
@@ -131,21 +153,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
 
             <div className="glass-card rounded-2xl p-5 border-white/5 space-y-2">
               <div className="flex justify-between items-center text-slate-400">
-                <span className="text-xs font-semibold uppercase tracking-wider">Total Bookings (PNRs)</span>
+                <span className="text-xs font-semibold uppercase tracking-wider">Total Bookings</span>
                 <FileText className="w-4 h-4 text-violet-400" />
               </div>
               <div>
                 <span className="text-xl font-bold font-display text-white">{48 + totalBookingsCount}</span>
-                <span className="text-[10px] text-slate-500 block mt-1">Total ticket records issued</span>
+                <span className="text-[10px] text-slate-500 block mt-1">Total PNR & Voucher records</span>
               </div>
             </div>
-
           </div>
 
           {/* Quick status monitor panels */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* Live API Connections status */}
             <div className="glass-card rounded-2xl p-5 border-white/5 space-y-4">
               <div className="flex justify-between items-center border-b border-white/5 pb-2">
                 <span className="font-display font-semibold text-white text-sm">GDS Channel Sync Status</span>
@@ -154,10 +173,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
               <div className="space-y-3 font-mono text-xs">
                 {[
                   { name: 'Sabre Flight API Gateway', latency: '95ms', status: 'ONLINE', color: 'text-emerald-400' },
-                  { name: 'Amadeus NDC Aggregator', latency: '124ms', status: 'ONLINE', color: 'text-emerald-400' },
+                  { name: 'Amadeus NDC Hotel Hub', latency: '138ms', status: 'ONLINE', color: 'text-emerald-400' },
+                  { name: 'Travelport Galileo cache', latency: '82ms', status: 'ONLINE', color: 'text-emerald-400' },
                   { name: 'Emirates Direct NDC API', latency: '110ms', status: 'ONLINE', color: 'text-emerald-400' },
                   { name: 'Biman Bangladesh NDC API', latency: '82ms', status: 'ONLINE', color: 'text-emerald-400' },
-                  { name: 'Singapore Airlines NDC Gateway', latency: '105ms', status: 'ONLINE', color: 'text-emerald-400' },
+                  { name: 'Regional Tour Supplier Gateway', latency: '162ms', status: 'ONLINE', color: 'text-emerald-400' },
                 ].map((channel, cIdx) => (
                   <div key={cIdx} className="flex justify-between items-center bg-[#011420] px-3 py-2 rounded-xl border border-white/5">
                     <span>{channel.name}</span>
@@ -170,7 +190,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
               </div>
             </div>
 
-            {/* Platform statistics lists */}
             <div className="glass-card rounded-2xl p-5 border-white/5 space-y-4">
               <div className="flex justify-between items-center border-b border-white/5 pb-2">
                 <span className="font-display font-semibold text-white text-sm">Active Agencies Rankings</span>
@@ -178,7 +197,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
               </div>
               <div className="space-y-3 text-xs">
                 {[
-                  { name: 'Apex Travel & Tours (Current)', sales: '৳595,500', share: '32%' },
+                  { name: 'Apex Travel & Tours', sales: '৳680,200', share: '38%' },
                   { name: 'Universal Booking Hub', sales: '৳420,000', share: '24%' },
                   { name: 'Chittagong Flights Agency', sales: '৳310,000', share: '18%' },
                   { name: 'Royal Globetrotters Inc', sales: '৳180,000', share: '11%' },
@@ -193,13 +212,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
                 ))}
               </div>
             </div>
-
           </div>
-
         </div>
       )}
 
-      {/* 2. Deposit Approvals Queue Tab */}
+      {/* 2. Deposit Approvals */}
       {activeTab === 'admin_deposits' && (
         <div className="glass-card rounded-3xl p-6 border-white/5 space-y-5">
           <div>
@@ -257,7 +274,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
         </div>
       )}
 
-      {/* 3. Agency Verifications Queue Tab */}
+      {/* 3. Agency Verifications */}
       {activeTab === 'admin_agencies' && (
         <div className="glass-card rounded-3xl p-6 border-white/5 space-y-5">
           <div>
@@ -302,7 +319,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
                     <div className="text-right font-semibold text-white">{agency.nidPassport}</div>
                   </div>
 
-                  {/* Attachment simulation */}
                   <div className="flex items-center gap-2 text-[10px] text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-500/20">
                     <ShieldCheck className="w-4.5 h-4.5 text-emerald-400 shrink-0" />
                     <span className="font-semibold font-mono truncate">TradeLicense_Doc_Verified.pdf Attached</span>
@@ -310,7 +326,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
 
                   <button
                     onClick={() => handleApproveAgency(agency.id, agency.companyName)}
-                    className="w-full py-2.5 rounded-xl bg-brand-cyan text-slate-950 font-bold text-xs hover:bg-brand-cyan-light transition-all shadow-md shadow-brand-cyan/10"
+                    className="w-full py-2.5 rounded-xl bg-brand-cyan text-slate-950 font-bold text-xs hover:bg-brand-cyan-light transition-all shadow-md shadow-brand-cyan/10 cursor-pointer"
                   >
                     Approve Trade License & Activate Agent
                   </button>
@@ -321,91 +337,260 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
         </div>
       )}
 
-      {/* 4. Global Booking Logs Tab */}
+      {/* 4. Global Booking Logs */}
       {activeTab === 'admin_bookings' && (
         <div className="glass-card rounded-3xl p-6 border-white/5 space-y-5">
-          <div>
-            <h3 className="font-display font-semibold text-white text-base">Global Bookings Logs</h3>
-            <p className="text-xs text-slate-400">Audit flight booking orders and cancellations across the entire B2B portal.</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+            <div>
+              <h3 className="font-display font-semibold text-white text-base">Global Bookings Logs</h3>
+              <p className="text-xs text-slate-400">Audit all agent bookings and transactions across the portal.</p>
+            </div>
+            <ServiceTabs activeService={activeLogsTab} onChange={setActiveLogsTab} variant="compact" />
           </div>
 
-          {bookings.length === 0 ? (
-            <div className="text-center py-16 space-y-2">
-              <FileText className="w-10 h-10 text-slate-500 mx-auto" />
-              <h4 className="font-display font-semibold text-white text-sm">No ticket records logs</h4>
-              <p className="text-xs text-slate-400">All agent flight ticketing actions will log here for audits.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs text-slate-300">
-                <thead>
-                  <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="py-3 px-2">Booking ID</th>
-                    <th className="py-3 px-2">PNR</th>
-                    <th className="py-3 px-2">Sector Routing</th>
-                    <th className="py-3 px-2">Passenger details</th>
-                    <th className="py-3 px-2">Markup Applied</th>
-                    <th className="py-3 px-2">Total Paid</th>
-                    <th className="py-3 px-2">Gross Profit</th>
-                    <th className="py-3 px-2">Booking Date</th>
-                    <th className="py-3 px-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map((booking) => (
-                    <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
-                      <td className="py-4 px-2 font-mono text-slate-400">{booking.id}</td>
-                      <td className="py-4 px-2 font-bold font-mono tracking-widest text-white">{booking.pnr}</td>
-                      <td className="py-4 px-2">
-                        <span className="font-semibold text-white block">{booking.flight.flightNumber}</span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">
-                          {booking.flight.departureAirport} → {booking.flight.arrivalAirport} ({booking.flight.cabinClass})
-                        </span>
-                      </td>
-                      <td className="py-4 px-2 font-semibold">
-                        {booking.passengers[0]?.lastName}/{booking.passengers[0]?.firstName}
-                      </td>
-                      <td className="py-4 px-2">৳{booking.markupApplied.toLocaleString()}</td>
-                      <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
-                      <td className="py-4 px-2 font-semibold text-emerald-400">৳{booking.agentProfit.toLocaleString()}</td>
-                      <td className="py-4 px-2 text-slate-400">{new Date(booking.bookingDate).toLocaleDateString()}</td>
-                      <td className="py-4 px-2">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                          booking.status === 'Ticketed'
-                            ? 'bg-emerald-500/10 text-emerald-400'
-                            : 'bg-rose-500/10 text-rose-400'
-                        }`}>
-                          {booking.status}
-                        </span>
-                      </td>
+          {activeLogsTab === 'flights' && (
+            flightBookings.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <FileText className="w-10 h-10 text-slate-500 mx-auto" />
+                <h4 className="font-display font-semibold text-white text-sm">No ticket records logs</h4>
+                <p className="text-xs text-slate-400">Flight ticketing audit logs will show here.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs text-slate-300">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="py-3 px-2">Booking ID</th>
+                      <th className="py-3 px-2">PNR</th>
+                      <th className="py-3 px-2">Sector Routing</th>
+                      <th className="py-3 px-2">Passenger</th>
+                      <th className="py-3 px-2">Markup</th>
+                      <th className="py-3 px-2">Total Paid</th>
+                      <th className="py-3 px-2">Gross Profit</th>
+                      <th className="py-3 px-2">Booking Date</th>
+                      <th className="py-3 px-2">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {flightBookings.map((booking) => (
+                      <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
+                        <td className="py-4 px-2 font-mono text-slate-400">{booking.id}</td>
+                        <td className="py-4 px-2 font-bold font-mono tracking-widest text-white">{booking.pnr}</td>
+                        <td className="py-4 px-2">
+                          <span className="font-semibold text-white block">{booking.flight.flightNumber}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.flight.departureAirport} → {booking.flight.arrivalAirport}</span>
+                        </td>
+                        <td className="py-4 px-2 font-semibold">{booking.passengers[0]?.lastName}/{booking.passengers[0]?.firstName}</td>
+                        <td className="py-4 px-2">৳{booking.markupApplied.toLocaleString()}</td>
+                        <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
+                        <td className="py-4 px-2 font-semibold text-emerald-400">৳{booking.agentProfit.toLocaleString()}</td>
+                        <td className="py-4 px-2 text-slate-400">{new Date(booking.bookingDate).toLocaleDateString()}</td>
+                        <td className="py-4 px-2">
+                          <StatusBadge status={booking.status === 'Ticketed' ? 'Ticketed' : 'Cancelled'} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+
+          {activeLogsTab === 'hotels' && (
+            hotelBookings.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <FileText className="w-10 h-10 text-slate-500 mx-auto" />
+                <h4 className="font-display font-semibold text-white text-sm">No hotel logs</h4>
+                <p className="text-xs text-slate-400">Confirmed hotel reservation audit logs will show here.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs text-slate-300">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="py-3 px-2">Booking ID</th>
+                      <th className="py-3 px-2">Confirmation No</th>
+                      <th className="py-3 px-2">Hotel</th>
+                      <th className="py-3 px-2">Lead Guest</th>
+                      <th className="py-3 px-2">Markup</th>
+                      <th className="py-3 px-2">Total Paid</th>
+                      <th className="py-3 px-2">Booking Date</th>
+                      <th className="py-3 px-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hotelBookings.map((booking) => (
+                      <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
+                        <td className="py-4 px-2 font-mono text-slate-400">{booking.id}</td>
+                        <td className="py-4 px-2 font-bold font-mono tracking-widest text-white">{booking.confirmationNumber}</td>
+                        <td className="py-4 px-2">
+                          <span className="font-semibold text-white block">{booking.hotel.name}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.hotel.city} ({booking.nights} nights)</span>
+                        </td>
+                        <td className="py-4 px-2 font-semibold">{booking.guestName}</td>
+                        <td className="py-4 px-2">৳{booking.markupApplied.toLocaleString()}</td>
+                        <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
+                        <td className="py-4 px-2 text-slate-400">{new Date(booking.bookingDate).toLocaleDateString()}</td>
+                        <td className="py-4 px-2">
+                          <StatusBadge status={booking.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+
+          {activeLogsTab === 'tours' && (
+            tourBookings.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <FileText className="w-10 h-10 text-slate-500 mx-auto" />
+                <h4 className="font-display font-semibold text-white text-sm">No tour logs</h4>
+                <p className="text-xs text-slate-400">Confirmed tour booking audit logs will show here.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs text-slate-300">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="py-3 px-2">Booking ID</th>
+                      <th className="py-3 px-2">Booking Ref</th>
+                      <th className="py-3 px-2">Tour Package</th>
+                      <th className="py-3 px-2">Lead Traveler</th>
+                      <th className="py-3 px-2">Markup</th>
+                      <th className="py-3 px-2">Total Paid</th>
+                      <th className="py-3 px-2">Booking Date</th>
+                      <th className="py-3 px-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tourBookings.map((booking) => (
+                      <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
+                        <td className="py-4 px-2 font-mono text-slate-400">{booking.id}</td>
+                        <td className="py-4 px-2 font-bold font-mono tracking-widest text-white">{booking.confirmationNumber}</td>
+                        <td className="py-4 px-2">
+                          <span className="font-semibold text-white block">{booking.tourPackage.name}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.tourPackage.destination}</span>
+                        </td>
+                        <td className="py-4 px-2 font-semibold">{booking.leadTravelerName}</td>
+                        <td className="py-4 px-2">৳{booking.markupApplied.toLocaleString()}</td>
+                        <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
+                        <td className="py-4 px-2 text-slate-400">{new Date(booking.bookingDate).toLocaleDateString()}</td>
+                        <td className="py-4 px-2">
+                          <StatusBadge status={booking.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
           )}
         </div>
       )}
 
-      {/* 5. Global Settings Tab */}
+      {/* 5. Hotel Inventory Management */}
+      {activeTab === 'admin_hotels' && (
+        <div className="glass-card rounded-3xl p-6 border-white/5 space-y-5">
+          <div className="flex justify-between items-center border-b border-white/5 pb-3">
+            <div>
+              <h3 className="font-display font-semibold text-white text-base">Hotel Inventory Manager</h3>
+              <p className="text-xs text-slate-400">View static properties, edit available rate plans and rooms.</p>
+            </div>
+            <button className="px-4 py-2 rounded-xl bg-brand-cyan text-slate-950 font-bold text-xs hover:bg-brand-cyan-light transition-all flex items-center gap-1 cursor-pointer">
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Property</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {HOTELS.map((hotel) => (
+              <div key={hotel.id} className="bg-[#011420] border border-white/10 rounded-2xl p-5 space-y-3">
+                <div className="flex justify-between">
+                  <h4 className="font-display font-bold text-white text-sm">{hotel.name}</h4>
+                  <span className="text-[10px] text-brand-cyan font-bold">{hotel.roomTypes.length} Room Types</span>
+                </div>
+                <p className="text-[11px] text-slate-400 line-clamp-2">{hotel.description}</p>
+                <div className="text-[10px] text-slate-400 space-y-1">
+                  <div>City: <strong className="text-white">{hotel.city}, {hotel.country}</strong></div>
+                  <div>Supplier ID: <strong className="text-white font-mono">{hotel.supplierCode}</strong></div>
+                </div>
+                <div className="pt-3 border-t border-white/5 flex justify-end gap-2">
+                  <button className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] text-slate-300 font-semibold hover:text-white transition-colors cursor-pointer">
+                    Manage Rooms
+                  </button>
+                  <button className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] text-slate-300 font-semibold hover:text-white transition-colors cursor-pointer">
+                    Rates & Seasons
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 6. Tour Packages Management */}
+      {activeTab === 'admin_tours' && (
+        <div className="glass-card rounded-3xl p-6 border-white/5 space-y-5">
+          <div className="flex justify-between items-center border-b border-white/5 pb-3">
+            <div>
+              <h3 className="font-display font-semibold text-white text-base">Tour Packages Manager</h3>
+              <p className="text-xs text-slate-400">Add or modify standard packages, itineraries, and seasonal pricing.</p>
+            </div>
+            <button className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 transition-all flex items-center gap-1 cursor-pointer">
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create Tour</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {TOUR_PACKAGES.map((tour) => (
+              <div key={tour.id} className="bg-[#011420] border border-white/10 rounded-2xl p-5 space-y-3">
+                <div className="flex justify-between">
+                  <h4 className="font-display font-bold text-white text-sm">{tour.name}</h4>
+                  <span className="text-[10px] text-emerald-400 font-bold">{tour.category}</span>
+                </div>
+                <p className="text-[11px] text-slate-400 line-clamp-2">{tour.description}</p>
+                <div className="text-[10px] text-slate-400 flex justify-between">
+                  <span>Duration: <strong className="text-white">{tour.durationDays} Days</strong></span>
+                  <span>Guide: <strong className="text-white">{tour.languages.join('/')}</strong></span>
+                </div>
+                <div className="pt-3 border-t border-white/5 flex justify-end gap-2">
+                  <button className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] text-slate-300 font-semibold hover:text-white transition-colors cursor-pointer">
+                    Itinerary Planner
+                  </button>
+                  <button className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[10px] text-slate-300 font-semibold hover:text-white transition-colors cursor-pointer">
+                    Pricing Config
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 7. Global Settings */}
       {activeTab === 'admin_settings' && (
         <div className="max-w-xl mx-auto glass-card rounded-3xl p-6 border-white/5 space-y-6">
           <div>
             <h3 className="font-display font-semibold text-white text-base">Global GDS / NDC Config</h3>
-            <p className="text-xs text-slate-400">Adjust standard commission algorithms and API connectivity.</p>
+            <p className="text-xs text-slate-400">Adjust baseline commissions, standard markup targets, and API connectors.</p>
           </div>
 
           {settingsSaved && (
             <div className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded-xl p-3.5 text-xs flex items-center gap-2 font-medium">
               <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>GDS commission adjustments saved and synced to API gateways.</span>
+              <span>Multi-vertical pricing and commission adjustments saved and synced to API gateways.</span>
             </div>
           )}
 
-          <form onSubmit={handleSaveCommission} className="space-y-5">
+          <form onSubmit={handleSaveSettings} className="space-y-6">
+            
+            {/* Flight commission */}
             <div className="space-y-2.5">
               <div className="flex justify-between text-xs font-semibold">
-                <span className="text-slate-300">Baseline GDS API Commission (Sabre / Amadeus)</span>
+                <span className="text-slate-300">Baseline Flight GDS Commission</span>
                 <span className="text-brand-cyan font-bold font-display text-sm">{comValue}%</span>
               </div>
               <input
@@ -417,19 +602,50 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
                 onChange={(e) => setComValue(Number(e.target.value))}
                 className="w-full h-1.5 rounded-lg bg-slate-800 accent-brand-cyan cursor-pointer transition-all focus:outline-none"
               />
-              <div className="flex justify-between text-[9px] text-slate-500 font-bold uppercase">
-                <span>0% Net Cost</span>
-                <span>Max (15% Refund)</span>
-              </div>
             </div>
 
+            {/* Hotel markup base */}
+            <div className="space-y-2.5">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-slate-300">Standard Hotel B2B Markup Base</span>
+                <span className="text-brand-cyan font-bold font-display text-sm">৳{hotMarkupVal.toLocaleString()}</span>
+              </div>
+              <input
+                type="range"
+                min={500}
+                max={10000}
+                step={250}
+                value={hotMarkupVal}
+                onChange={(e) => setHotMarkupVal(Number(e.target.value))}
+                className="w-full h-1.5 rounded-lg bg-slate-800 accent-brand-cyan cursor-pointer transition-all focus:outline-none"
+              />
+            </div>
+
+            {/* Tour markup base */}
+            <div className="space-y-2.5">
+              <div className="flex justify-between text-xs font-semibold">
+                <span className="text-slate-300">Standard Tour B2B Markup Base</span>
+                <span className="text-emerald-400 font-bold font-display text-sm">৳{trMarkupVal.toLocaleString()}</span>
+              </div>
+              <input
+                type="range"
+                min={1000}
+                max={15000}
+                step={500}
+                value={trMarkupVal}
+                onChange={(e) => setTrMarkupVal(Number(e.target.value))}
+                className="w-full h-1.5 rounded-lg bg-slate-800 accent-emerald-500 cursor-pointer transition-all focus:outline-none"
+              />
+            </div>
+
+            {/* API Switchers */}
             <div className="space-y-3.5 border-t border-white/5 pt-4">
               <span className="text-xs font-bold text-white block">Active API Connectors</span>
               <div className="space-y-2">
                 {[
                   { name: 'Sabre GDS Live Connection', enabled: true },
-                  { name: 'Amadeus GDS NDC Sync', enabled: true },
-                  { name: 'Travelport Galileo cache', enabled: false },
+                  { name: 'Amadeus NDC Hotel Hub', enabled: true },
+                  { name: 'Regional Tour Supplier Gateway', enabled: true },
                 ].map((api, idx) => (
                   <div key={idx} className="flex justify-between items-center text-xs">
                     <span className="text-slate-300">{api.name}</span>
@@ -450,8 +666,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ activeTab }) => 
               type="submit"
               className="w-full py-3 rounded-xl bg-brand-cyan text-slate-950 font-bold text-xs hover:bg-brand-cyan-light transition-all shadow-lg shadow-brand-cyan/20 cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Apply GDS Commission Adjustments</span>
+              <Settings className="w-3.5 h-3.5" />
+              <span>Apply Multi-Vertical Configs</span>
             </button>
           </form>
         </div>

@@ -3,11 +3,15 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { TypedUseSelectorHook } from 'react-redux';
 import authReducer from './authSlice';
 import bookingReducer from './bookingSlice';
+import hotelReducer from './hotelSlice';
+import tourReducer from './tourSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     booking: bookingReducer,
+    hotel: hotelReducer,
+    tour: tourReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

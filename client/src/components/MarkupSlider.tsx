@@ -52,14 +52,14 @@ export const MarkupSlider: React.FC<MarkupSliderProps> = ({ basePrice, tax, quan
 
   return (
     <div className="glass-card rounded-2xl p-5 border-brand-cyan/20 space-y-5">
-      <div className="flex items-center justify-between border-b border-white/5 pb-3">
+      <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row xl:items-center justify-between gap-3 border-b border-white/5 pb-3">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-5 h-5 text-brand-cyan" />
           <h3 className="font-display font-semibold text-white text-base">B2B Markup Manager</h3>
         </div>
 
         {/* Fixed/Percent Toggle */}
-        <div className="flex bg-slate-900 border border-white/10 rounded-xl p-1">
+        <div className="flex bg-slate-900 border border-white/10 rounded-xl p-1 shrink-0">
           <button
             type="button"
             onClick={() => handleTypeChange('fixed')}

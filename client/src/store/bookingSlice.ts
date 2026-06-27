@@ -1,6 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { Flight, LedgerTransaction } from '../data/mockData';
+import type { Flight } from '../data/flightData';
+import type { LedgerTransaction } from '../data/mockData';
 import { MOCK_LEDGER } from '../data/mockData';
 
 export interface SearchQuery {

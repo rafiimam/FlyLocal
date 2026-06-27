@@ -15,7 +15,10 @@ import {
   LayoutDashboard,
   Shield,
   Sliders,
-  Users
+  Users,
+  Building2,
+  Map,
+  Compass
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -52,7 +55,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
 
   // Set navigation items based on role
   const agentMenuItems: MenuItem[] = [
-    { id: 'search', label: 'Flight Search', icon: Plane },
+    { id: 'search', label: 'Search & Book', icon: Compass },
     { id: 'bookings', label: 'Bookings Queue', icon: FileText },
     { id: 'ledger', label: 'Financial Ledger', icon: Layers },
     { id: 'deposit', label: 'Request Deposit', icon: DollarSign },
@@ -63,6 +66,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, acti
     { id: 'admin_deposits', label: 'Deposit Approvals', icon: DollarSign, badge: pendingDepositsCount },
     { id: 'admin_agencies', label: 'Agency Verifications', icon: Users, badge: pendingAgenciesCount },
     { id: 'admin_bookings', label: 'Global Booking Logs', icon: FileText },
+    { id: 'admin_hotels', label: 'Hotel Inventory', icon: Building2 },
+    { id: 'admin_tours', label: 'Tour Packages', icon: Map },
     { id: 'admin_settings', label: 'GDS Settings', icon: Sliders },
   ];
 

@@ -6,7 +6,9 @@ import {
   Calculator, 
   FileText, 
   BadgePercent, 
-  ChevronRight
+  ChevronRight,
+  Building2,
+  Map
 } from 'lucide-react';
 
 interface HomeProps {
@@ -78,7 +80,7 @@ export const Home: React.FC<HomeProps> = ({ onEnterPortal }) => {
           </div>
 
           <div className="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-300">
-            <a href="#search-widget" className="hover:text-white transition-colors">Find Flights</a>
+            <a href="#services" className="hover:text-white transition-colors">Our Services</a>
             <a href="#trending-deals" className="hover:text-white transition-colors">Agent Hot Deals</a>
             <a href="#agency-features" className="hover:text-white transition-colors">Portal features</a>
           </div>
@@ -110,18 +112,18 @@ export const Home: React.FC<HomeProps> = ({ onEnterPortal }) => {
         <div className="text-center space-y-6 max-w-3xl mx-auto">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/20 text-brand-cyan text-xs font-semibold uppercase tracking-wider">
             <Compass className="w-3.5 h-3.5" />
-            <span>Premium B2B Flight Ticketing Portal</span>
+            <span>Premium B2B Multi-Vertical Travel Portal</span>
           </div>
 
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-tight">
-            Compare GDS Net Fares. <br />
+            Flights · Hotels · Tours. <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-cyan-light to-brand-cyan text-glow">
-              Issue Air Tickets Instantly.
+              Issue Bookings Instantly.
             </span>
           </h1>
 
           <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-            The exclusive agent workspace for Bangladeshi travel operators. Lock in GDS and NDC airline inventories at net cost, manage client markups live, download receipts, and process refunds instantly.
+            The unified B2B agent workspace for Bangladeshi travel operators. Lock in live air ticket seats, global hotel rooms, and complete tour packages at net supplier cost. Adjust client invoice markups on-the-fly and reconcile invoices instantly.
           </p>
         </div>
 
@@ -276,6 +278,62 @@ export const Home: React.FC<HomeProps> = ({ onEnterPortal }) => {
 
           </div>
 
+        </div>
+      </section>
+
+      {/* Services Showcase Cards */}
+      <section id="services" className="py-16 max-w-7xl mx-auto px-6 space-y-12 scroll-mt-20">
+        <div className="text-center space-y-2">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-wide">
+            Multi-Vertical B2B Inventory
+          </h2>
+          <p className="text-xs text-slate-400 max-w-lg mx-auto">
+            Access direct API feeds across flight carriers, international hotels, and tour suppliers.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Flights Card */}
+          <div className="bg-[#021825]/80 border border-white/10 rounded-3xl p-6 bg-gradient-to-br from-[#012235]/50 to-slate-950/50 hover:border-brand-cyan/35 transition-all space-y-4 group">
+            <div className="w-12 h-12 rounded-2xl bg-brand-cyan/10 border border-brand-cyan/25 flex items-center justify-center text-brand-cyan group-hover:scale-110 transition-transform">
+              <Plane className="w-6 h-6 transform -rotate-45" />
+            </div>
+            <h3 className="font-display font-bold text-white text-base">GDS Flight Desk</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Instantly search, book, and issue seats from Sabre, Amadeus, and NDC carriers. Profit from standard 7% agent commissions refunded to your wallet automatically.
+            </p>
+            <div className="text-[10px] font-bold text-brand-cyan uppercase tracking-wider flex items-center gap-1.5 pt-2">
+              <span>Sync latency &lt; 100ms</span>
+            </div>
+          </div>
+
+          {/* Hotels Card */}
+          <div className="bg-[#021825]/80 border border-white/10 rounded-3xl p-6 bg-gradient-to-br from-[#012235]/50 to-slate-950/50 hover:border-brand-cyan/35 transition-all space-y-4 group">
+            <div className="w-12 h-12 rounded-2xl bg-brand-cyan/10 border border-brand-cyan/25 flex items-center justify-center text-brand-cyan group-hover:scale-110 transition-transform">
+              <Building2 className="w-6 h-6" />
+            </div>
+            <h3 className="font-display font-bold text-white text-base">Global Hotel Bed-Banks</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Browse over 500,000 properties ranging from local luxury resorts in Cox's Bazar to Art Deco suites in London. Live room blocks, meal plans, and instant confirmations.
+            </p>
+            <div className="text-[10px] font-bold text-brand-cyan uppercase tracking-wider flex items-center gap-1.5 pt-2">
+              <span>Real-time Voucher Generation</span>
+            </div>
+          </div>
+
+          {/* Tours Card */}
+          <div className="bg-[#021825]/80 border border-white/10 rounded-3xl p-6 bg-gradient-to-br from-[#012235]/50 to-slate-950/50 hover:border-brand-cyan/35 transition-all space-y-4 group">
+            <div className="w-12 h-12 rounded-2xl bg-brand-cyan/10 border border-brand-cyan/25 flex items-center justify-center text-brand-cyan group-hover:scale-110 transition-transform">
+              <Map className="w-6 h-6" />
+            </div>
+            <h3 className="font-display font-bold text-white text-base">Curated Tour Packages</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Offer pre-packaged multi-day tours with day-by-day itineraries, inclusions, meals, and private transport options. Expand your product line to increase agency profits.
+            </p>
+            <div className="text-[10px] font-bold text-brand-cyan uppercase tracking-wider flex items-center gap-1.5 pt-2">
+              <span>Comprehensive PDF Itineraries</span>
+            </div>
+          </div>
         </div>
       </section>
 

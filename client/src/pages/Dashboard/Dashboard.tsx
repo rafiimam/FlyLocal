@@ -1,39 +1,31 @@
 import React, { useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { 
-  updateSearchQuery, 
-  setFlights, 
-  setSelectedFlight, 
-  updateFilters, 
-  resetFilters, 
-  setIsSearching, 
-  setSearchTriggered, 
-  addBooking, 
   addLedgerTransaction, 
   voidBookingTicket 
 } from '../../store/bookingSlice';
 import { updateBalance } from '../../store/authSlice';
-import { AirportSelector } from '../../components/AirportSelector';
-import { TravellerSelector } from '../../components/TravellerSelector';
+
+// Components
+import { ServiceTabs } from '../../components/shared/ServiceTabs';
+import { StatusBadge } from '../../components/shared/StatusBadge';
+import { FlightSearchPanel } from '../../components/flights/FlightSearchPanel';
+import { FlightResultsList } from '../../components/flights/FlightResultsList';
+import { FlightFilters } from '../../components/flights/FlightFilters';
+import { FlightCheckout } from '../../components/flights/FlightCheckout';
+import { HotelDashboard } from './HotelDashboard';
+import { TourDashboard } from './TourDashboard';
 import { MarkupSlider } from '../../components/MarkupSlider';
+
 import type { LedgerTransaction } from '../../data/mockData';
-import { FLIGHTS } from '../../data/mockData';
+import type { ServiceType } from '../../data/mockData';
 import { 
-  Search, 
-  ArrowUpDown, 
-  ArrowLeftRight,
-  Calendar, 
   DollarSign, 
   FileText, 
-  ShieldCheck, 
-  Info,
-  ChevronDown,
-  ChevronUp,
-  X,
-  AlertTriangle,
-  Send,
-  Ticket,
-  Plane
+  Send, 
+  Building2,
+  Compass,
+  ShieldCheck
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -45,32 +37,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
   
   // Select Redux States
   const agent = useAppSelector((state) => state.auth.agent);
-  const searchQuery = useAppSelector((state) => state.booking.searchQuery);
-  const filteredFlights = useAppSelector((state) => state.booking.filteredFlights);
-  const selectedFlight = useAppSelector((state) => state.booking.selectedFlight);
   const ledger = useAppSelector((state) => state.booking.ledger);
-  const bookings = useAppSelector((state) => state.booking.bookings);
-  const filters = useAppSelector((state) => state.booking.filters);
-  const markupType = useAppSelector((state) => state.booking.markupType);
-  const markupValue = useAppSelector((state) => state.booking.markupValue);
-  const commissionRate = useAppSelector((state) => state.booking.commissionRate);
-  const isSearching = useAppSelector((state) => state.booking.isSearching);
+  
+  // Flight bookings (Central list for flights, hotel/tour have their own slice states)
+  const flightBookings = useAppSelector((state) => state.booking.bookings);
+  const hotelBookings = useAppSelector((state) => state.hotel.hotelBookings);
+  const tourBookings = useAppSelector((state) => state.tour.tourBookings);
+
+  const selectedFlight = useAppSelector((state) => state.booking.selectedFlight);
+  const filteredFlights = useAppSelector((state) => state.booking.filteredFlights);
   const searchTriggered = useAppSelector((state) => state.booking.searchTriggered);
+  const commissionRate = useAppSelector((state) => state.booking.commissionRate);
 
   // Local Page UI states
-  const [expandedFlightId, setExpandedFlightId] = useState<string | null>(null);
-  const [passengerDetails, setPassengerDetails] = useState({
-    title: 'Mr',
-    firstName: '',
-    lastName: '',
-    gender: 'Male',
-    dob: '',
-    passportNumber: '',
-    passportExpiry: '',
-    nationality: 'Bangladeshi',
-  });
-  const [checkoutSuccessPnr, setCheckoutSuccessPnr] = useState<string | null>(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [activeService, setActiveService] = useState<ServiceType>('flights');
+  const [activeBookingsTab, setActiveBookingsTab] = useState<ServiceType>('flights');
 
   // Deposit Request State
   const [depositAmount, setDepositAmount] = useState('');
@@ -80,143 +61,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
 
   if (!agent) return null;
 
-  const formatDateDay = (dateStr: string) => {
-    if (!dateStr) return '--';
-    const parts = dateStr.split('-');
-    if (parts.length < 3) return '--';
-    return parts[2];
-  };
-
-  const formatDateMonthYear = (dateStr: string) => {
-    if (!dateStr) return 'Select Date';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return 'Select Date';
-    return d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-  };
-
-  const formatDateWeekday = (dateStr: string) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleString('en-US', { weekday: 'long' });
-  };
-
-  // Swap From & To airports
-  const handleSwapAirports = () => {
-    const fromVal = searchQuery.from;
-    const toVal = searchQuery.to;
-    dispatch(updateSearchQuery({
-      from: toVal,
-      to: fromVal
-    }));
-  };
-
-  // Run Flight Search
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    dispatch(setIsSearching(true));
-    dispatch(setSearchTriggered(true));
-    dispatch(setSelectedFlight(null));
-    setExpandedFlightId(null);
-
-    setTimeout(() => {
-      const matches = FLIGHTS.filter((flight) => {
-        const fromMatch = flight.departureAirport === searchQuery.from;
-        const toMatch = flight.arrivalAirport === searchQuery.to;
-        const cabinMatch = flight.cabinClass === searchQuery.cabinClass;
-        return fromMatch && toMatch && cabinMatch;
-      });
-      dispatch(setFlights(matches));
-      dispatch(setIsSearching(false));
-    }, 1200);
-  };
-
-  // Submit Booking Checkout
-  const handleCheckoutSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFlight) return;
-
-    const baseFareTotal = selectedFlight.basePrice;
-    const taxTotal = selectedFlight.tax;
-    const baseCommission = baseFareTotal * commissionRate;
-    const agentNetCost = (baseFareTotal + taxTotal) - baseCommission;
-
-    const customMarkup = markupType === 'fixed'
-      ? markupValue
-      : baseFareTotal * (markupValue / 100);
-
-    const totalClientPaid = agentNetCost + customMarkup;
-    const agentProfit = baseCommission + customMarkup;
-
-    if (agent.balance < agentNetCost) {
-      setCheckoutError('Insufficient wallet balance to purchase this flight ticket. Add deposits.');
-      return;
-    }
-
-    const pnr = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const newBooking = {
-      id: `BK-${Date.now()}`,
-      pnr,
-      flight: selectedFlight,
-      query: searchQuery,
-      passengers: [passengerDetails],
-      markupApplied: customMarkup,
-      totalClientPaid,
-      agentProfit,
-      bookingDate: new Date().toISOString(),
-      status: 'Ticketed' as const,
-    };
-
-    // Deduct agent net cost
-    dispatch(updateBalance(-agentNetCost));
-
-    // Add ledger statement
-    const newTxn: LedgerTransaction = {
-      id: `TXN-${Date.now()}`,
-      ref: `PNR-${pnr}`,
-      date: new Date().toISOString(),
-      type: 'Issue Ticket',
-      description: `Ticket Issued PNR ${pnr} (${selectedFlight.departureAirport}-${selectedFlight.arrivalAirport}, Pax: ${passengerDetails.lastName}/${passengerDetails.firstName})`,
-      amount: -agentNetCost,
-      balanceAfter: agent.balance - agentNetCost,
-      status: 'Success',
-    };
-
-    dispatch(addBooking(newBooking));
-    dispatch(addLedgerTransaction(newTxn));
-    setCheckoutSuccessPnr(pnr);
-    setCheckoutError(null);
-  };
-
-  // Void ticket refund action
-  const handleVoidTicket = (bookingId: string) => {
-    const booking = bookings.find((b) => b.id === bookingId);
-    if (!booking) return;
-
-    const baseFareTotal = booking.flight.basePrice;
-    const taxTotal = booking.flight.tax;
-    const baseCommission = baseFareTotal * commissionRate;
-    const agentNetCost = (baseFareTotal + taxTotal) - baseCommission;
-    const voidPenalty = 3500;
-    const refundAmount = agentNetCost - voidPenalty;
-
-    dispatch(updateBalance(refundAmount));
-
-    const newTxn: LedgerTransaction = {
-      id: `TXN-${Date.now()}`,
-      ref: `VOID-${booking.pnr}`,
-      date: new Date().toISOString(),
-      type: 'Void Ticket',
-      description: `Void Ticket PNR ${booking.pnr} (Refunded with penalty BDT ${voidPenalty.toLocaleString()})`,
-      amount: refundAmount,
-      balanceAfter: agent.balance + refundAmount,
-      status: 'Success',
-    };
-
-    dispatch(voidBookingTicket({ bookingId, refundAmount, newTxn }));
-  };
-
-  // Submit Bank Deposit
+  // Submit Bank Deposit Request
   const handleDepositSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amount = Number(depositAmount);
@@ -240,764 +85,279 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
     setTimeout(() => setDepositSuccessMsg(false), 5000);
   };
 
+  // Void ticket action (Flights)
+  const handleVoidFlightTicket = (bookingId: string) => {
+    const booking = flightBookings.find((b) => b.id === bookingId);
+    if (!booking) return;
+
+    const baseFareTotal = booking.flight.basePrice;
+    const taxTotal = booking.flight.tax;
+    const baseCommission = baseFareTotal * commissionRate;
+    const agentNetCost = (baseFareTotal + taxTotal) - baseCommission;
+    const voidPenalty = 3500;
+    const refundAmount = agentNetCost - voidPenalty;
+
+    dispatch(updateBalance(refundAmount));
+
+    const newTxn: LedgerTransaction = {
+      id: `TXN-${Date.now()}`,
+      ref: `VOID-${booking.pnr}`,
+      date: new Date().toISOString(),
+      type: 'Void Ticket',
+      description: `Void Ticket PNR ${booking.pnr} (Refunded with penalty BDT ${voidPenalty.toLocaleString()})`,
+      amount: refundAmount,
+      balanceAfter: agent.balance + refundAmount,
+      status: 'Success',
+      serviceType: 'flights',
+    };
+
+    dispatch(voidBookingTicket({ bookingId, refundAmount, newTxn }));
+  };
+
   return (
     <div className="space-y-6">
-      {/* Flight search panel tab view */}
+      {/* Search & Book Dashboard Area */}
       {activeTab === 'search' && (
         <div className="space-y-6">
-          {/* Redesigned Premium Cockpit Radar Search Console */}
-          <div className="bg-[#021825]/90 border border-white/10 rounded-3xl p-6 shadow-2xl relative bg-gradient-to-r from-brand-navy-dark to-[#011420]/90">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-brand-cyan/5 rounded-full blur-3xl pointer-events-none" />
-            
-            <form onSubmit={handleSearchSubmit} className="space-y-6">
-              {/* Trip type and status header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
-                <div className="flex bg-slate-950/60 p-1 rounded-2xl border border-white/10 max-w-fit">
-                  <button
-                    type="button"
-                    onClick={() => dispatch(updateSearchQuery({ tripType: 'oneWay' }))}
-                    className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
-                      searchQuery.tripType === 'oneWay'
-                        ? 'bg-gradient-to-r from-brand-cyan to-brand-cyan-light text-slate-950 shadow-md shadow-brand-cyan/15 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Plane className="w-3.5 h-3.5 transform -rotate-45" />
-                    <span>One Way</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => dispatch(updateSearchQuery({ tripType: 'roundTrip' }))}
-                    className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${
-                      searchQuery.tripType === 'roundTrip'
-                        ? 'bg-gradient-to-r from-brand-cyan to-brand-cyan-light text-slate-950 shadow-md shadow-brand-cyan/15 font-extrabold'
-                        : 'text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <ArrowLeftRight className="w-3.5 h-3.5" />
-                    <span>Round Trip</span>
-                  </button>
-                </div>
-                <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5 bg-slate-950/40 px-3 py-1.5 rounded-full border border-white/5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Sabre & Amadeus GDS Live Hub Active</span>
-                </div>
-              </div>
-
-              {/* Unique Cockpit GDS Radar Route Console */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch select-none">
-                
-                {/* Radar Route Tracker Board - spans 6 cols */}
-                <div className="lg:col-span-6 bg-slate-950/50 border border-white/10 rounded-2xl p-5 relative hover:border-white/15 transition-all flex flex-col justify-between">
-                  <div className="absolute top-2 left-2 text-[8px] font-mono text-slate-500 uppercase tracking-widest pointer-events-none">
-                    GDS Radar Track: Active
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-6 mt-3 relative z-10 overflow-visible">
-                    
-                    {/* Departure Node Selector */}
-                    <div className="flex-1 min-w-0">
-                      <AirportSelector
-                        label="Departure Station"
-                        value={searchQuery.from}
-                        onChange={(code) => dispatch(updateSearchQuery({ from: code }))}
-                        placeholder="Departure airport..."
-                      />
-                    </div>
-
-                    {/* SVG Flight Path Arc - only visible on desktop row view */}
-                    <div className="hidden sm:block absolute left-[15%] right-[15%] top-1/2 -translate-y-1/2 h-12 pointer-events-none z-0">
-                      <svg className="w-full h-full text-brand-cyan/20" viewBox="0 0 100 50" fill="none" preserveAspectRatio="none">
-                        <path d="M 5 35 Q 50 5 95 35" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3 3" />
-                        <circle r="3.5" fill="#0ea5e9" className="animate-pulse">
-                          <animateMotion dur="4s" repeatCount="indefinite" path="M 5 35 Q 50 5 95 35" />
-                        </circle>
-                      </svg>
-                    </div>
-
-                    {/* Destination Node Selector */}
-                    <div className="flex-1 min-w-0">
-                      <AirportSelector
-                        label="Destination Station"
-                        value={searchQuery.to}
-                        onChange={(code) => dispatch(updateSearchQuery({ to: code }))}
-                        placeholder="Arrival airport..."
-                        excludeCode={searchQuery.from}
-                      />
-                    </div>
-
-                    {/* Centered Swap Switch (Overlaps boundary on both mobile stack & desktop row) */}
-                    <div className="absolute left-1/2 top-[55%] sm:top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-                      <button
-                        type="button"
-                        onClick={handleSwapAirports}
-                        className="w-8 h-8 rounded-full bg-slate-900 border border-white/10 hover:border-brand-cyan text-brand-cyan hover:text-white flex items-center justify-center shadow-lg transition-all duration-300 hover:rotate-180 active:scale-95 cursor-pointer hover:shadow-brand-cyan/25"
-                        title="Swap Airports"
-                      >
-                        <ArrowLeftRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Date stamp card */}
-                <div className="lg:col-span-3 bg-slate-950/50 border border-white/10 rounded-2xl p-5 relative hover:border-white/15 transition-all flex flex-col justify-between">
-                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
-                    Departure Date
-                  </label>
-                  
-                  <div className="relative flex-1 flex items-center min-h-[48px] cursor-pointer mt-1">
-                    {/* Overlay Date Display */}
-                    <div className="flex items-center gap-3.5 pointer-events-none">
-                      <div className="w-10 h-10 rounded-xl bg-brand-cyan/10 border border-brand-cyan/20 flex items-center justify-center text-brand-cyan shrink-0">
-                        <Calendar className="w-5 h-5" />
-                      </div>
-                      <div className="text-left">
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-extrabold text-white tracking-tight leading-none">
-                            {formatDateDay(searchQuery.departureDate)}
-                          </span>
-                          <span className="text-sm font-bold text-slate-300">
-                            {formatDateMonthYear(searchQuery.departureDate)}
-                          </span>
-                        </div>
-                        <span className="text-xs text-slate-400 block mt-0.5 font-medium">
-                          {formatDateWeekday(searchQuery.departureDate)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Invisible HTML Date Input */}
-                    <input
-                      type="date"
-                      required
-                      value={searchQuery.departureDate}
-                      onChange={(e) => dispatch(updateSearchQuery({ departureDate: e.target.value }))}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                    />
-                  </div>
-                </div>
-
-                {/* Travellers and Class Card */}
-                <div className="lg:col-span-3 bg-slate-950/50 border border-white/10 rounded-2xl p-5 relative hover:border-white/15 transition-all flex flex-col justify-between">
-                  <TravellerSelector
-                    adults={searchQuery.adults}
-                    childrenCount={searchQuery.children}
-                    infants={searchQuery.infants}
-                    cabinClass={searchQuery.cabinClass}
-                    onChange={(data) => {
-                      dispatch(updateSearchQuery({
-                        adults: data.adults,
-                        children: data.children,
-                        infants: data.infants,
-                        cabinClass: data.cabinClass,
-                      }));
-                    }}
-                  />
-                </div>
-
-              </div>
-
-              {/* Search Actions row */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 border-t border-white/5">
-                <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                  <ShieldCheck className="w-4.5 h-4.5 text-emerald-400 shrink-0" />
-                  <span>Sabre & Amadeus GDS live synchronization. Adjust markup slider below after querying.</span>
-                </div>
-                
-                <button
-                  type="submit"
-                  disabled={isSearching}
-                  className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-cyan-light hover:from-brand-cyan-light hover:to-brand-cyan text-slate-950 font-bold text-sm shadow-xl shadow-brand-cyan/20 hover:shadow-brand-cyan/35 flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5 duration-300 cursor-pointer"
-                >
-                  {isSearching ? (
-                    <>
-                      <div className="w-4 h-4 rounded-full border-2 border-slate-950 border-t-transparent animate-spin" />
-                      <span>Syncing Live Fares...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-4.5 h-4.5" />
-                      <span>Search Agent Flights</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+          {/* Service Selector Tabs */}
+          <div className="flex items-center justify-between gap-4">
+            <ServiceTabs activeService={activeService} onChange={setActiveService} />
+            <div className="text-[10px] text-slate-400 font-semibold hidden md:flex items-center gap-1.5 bg-slate-950/40 px-3 py-1.5 rounded-full border border-white/5">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-cyan animate-pulse" />
+              <span>Direct GDS Feed Activated</span>
+            </div>
           </div>
 
-          {/* Search Result HUD grid */}
-          {searchTriggered && (
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-              
-              {/* Left Side Filters Sidebar & Markup slider */}
-              <div className="lg:col-span-4 space-y-6">
-                
-                {/* Markup slider component */}
-                {selectedFlight ? (
-                  <MarkupSlider
-                    basePrice={selectedFlight.basePrice}
-                    tax={selectedFlight.tax}
-                  />
-                ) : filteredFlights.length > 0 ? (
-                  <MarkupSlider
-                    basePrice={filteredFlights[0].basePrice}
-                    tax={filteredFlights[0].tax}
-                  />
-                ) : (
-                  <div className="glass-card rounded-2xl p-4 text-xs text-slate-400 text-center italic border-white/5">
-                    Search flight results to configure live markups
-                  </div>
-                )}
+          {activeService === 'flights' && (
+            <div className="space-y-6">
+              <FlightSearchPanel />
 
-                {/* Filters card */}
-                <div className="glass-card rounded-2xl p-5 border-white/5 space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span className="font-display font-semibold text-white text-sm">GDS Filters</span>
-                    <button
-                      type="button"
-                      onClick={() => dispatch(resetFilters())}
-                      className="text-[10px] font-bold text-brand-cyan hover:underline"
-                    >
-                      Reset All
-                    </button>
-                  </div>
-
-                  {/* Stops filter */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Stops</span>
-                    <div className="flex gap-2">
-                      {[
-                        { id: null, label: 'All' },
-                        { id: 0, label: 'Direct' },
-                        { id: 1, label: '1 Stop' },
-                      ].map((item) => (
-                        <button
-                          key={item.label}
-                          type="button"
-                          onClick={() => dispatch(updateFilters({ stops: item.id as any }))}
-                          className={`flex-1 text-center py-2 rounded-xl text-xs font-semibold border ${
-                            filters.stops === item.id
-                              ? 'bg-brand-cyan/15 border-brand-cyan text-white'
-                              : 'bg-[#011420] border-white/10 text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Refundability */}
-                  <div className="space-y-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Ticket Refundability</span>
-                    <div className="flex gap-2">
-                      {[
-                        { id: null, label: 'All' },
-                        { id: true, label: 'Refundable' },
-                        { id: false, label: 'Non-Refund' },
-                      ].map((item) => (
-                        <button
-                          key={item.label}
-                          type="button"
-                          onClick={() => dispatch(updateFilters({ refundable: item.id as any }))}
-                          className={`flex-1 text-center py-2 rounded-xl text-xs font-semibold border ${
-                            filters.refundable === item.id
-                              ? 'bg-brand-cyan/15 border-brand-cyan text-white'
-                              : 'bg-[#011420] border-white/10 text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* Flight Results feeds */}
-              <div className="lg:col-span-8 space-y-4">
-                
-                {/* Result metadata sort */}
-                <div className="flex justify-between items-center bg-[#011420] border border-white/5 px-4 py-3 rounded-2xl">
-                  <span className="text-xs font-semibold text-slate-400">
-                    Showing <span className="text-white">{filteredFlights.length}</span> flight matches for {searchQuery.from} → {searchQuery.to}
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-                    <select
-                      value={filters.sortOrder}
-                      onChange={(e) => dispatch(updateFilters({ sortOrder: e.target.value as any }))}
-                      className="bg-transparent text-xs font-semibold text-slate-300 border-none outline-none focus:ring-0 cursor-pointer"
-                    >
-                      <option value="priceAsc">Sort: Price (Lowest)</option>
-                      <option value="priceDesc">Sort: Price (Highest)</option>
-                      <option value="durationAsc">Sort: Flight Duration</option>
-                      <option value="depTimeAsc">Sort: Departure Time</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Loading state */}
-                {isSearching ? (
-                  <div className="glass-card rounded-2xl p-16 text-center space-y-4 border-white/5">
-                    <div className="w-12 h-12 rounded-full border-t-2 border-brand-cyan border-r-2 animate-spin mx-auto" />
-                    <p className="text-slate-300 font-medium text-sm animate-pulse">Syncing live NDC inventories from GDS portals...</p>
-                  </div>
-                ) : filteredFlights.length === 0 ? (
-                  <div className="glass-card rounded-2xl p-16 text-center space-y-2 border-white/5">
-                    <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
-                    <h4 className="font-display font-semibold text-white text-base">No flights match the filters</h4>
-                    <p className="text-slate-400 text-xs max-w-sm mx-auto">
-                      Try expanding filters or changing options in the search widget to locate flight schedules.
-                    </p>
-                  </div>
-                ) : (
-                  /* Flight Cards list */
-                  filteredFlights.map((flight) => {
-                    // Cost math based on slider markups
-                    const baseTotal = flight.basePrice;
-                    const taxTotal = flight.tax;
-                    const commission = baseTotal * commissionRate;
-                    const agentNetCost = (baseTotal + taxTotal) - commission;
-                    const customMarkup = markupType === 'fixed' ? markupValue : baseTotal * (markupValue / 100);
-                    const totalCustomerInvoice = agentNetCost + customMarkup;
-                    
-                    const isExpanded = expandedFlightId === flight.id;
-
-                    return (
-                      <div
-                        key={flight.id}
-                        className={`glass-card rounded-2xl border transition-all duration-300 overflow-hidden ${
-                          selectedFlight?.id === flight.id
-                            ? 'border-brand-cyan shadow-md shadow-brand-cyan/5 bg-brand-cyan/2'
-                            : 'border-white/5 hover:border-white/15 hover:bg-white/1'
-                        }`}
-                      >
-                        {/* Main Summary strip */}
-                        <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-                          
-                          {/* Airline info */}
-                          <div className="flex items-center gap-3 min-w-[120px]">
-                            <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-brand-navy-light to-brand-navy border border-white/10 flex items-center justify-center font-display font-black text-xs text-white">
-                              {flight.airlineCode}
-                            </div>
-                            <div>
-                              <span className="text-sm font-semibold text-white block">{flight.flightNumber}</span>
-                              <span className="text-[10px] text-slate-400 block mt-0.5">Carrier {flight.airlineCode}</span>
-                            </div>
-                          </div>
-
-                          {/* Time duration timeline */}
-                          <div className="flex items-center justify-between sm:justify-start flex-1 max-w-md gap-4">
-                            <div className="text-left">
-                              <span className="text-base font-bold text-white block">
-                                {new Date(flight.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              <span className="text-xs text-slate-400 font-bold bg-[#011420] px-1.5 py-0.5 rounded mt-0.5 inline-block">
-                                {flight.departureAirport}
-                              </span>
-                            </div>
-
-                            {/* Duration line */}
-                            <div className="flex-1 text-center relative px-2">
-                              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block mb-0.5">
-                                {flight.duration}
-                              </span>
-                              <div className="h-0.5 bg-white/10 relative">
-                                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-brand-cyan" />
-                              </div>
-                              <span className="text-[9px] text-brand-cyan font-bold block mt-0.5">
-                                {flight.stops === 0 ? 'Direct' : `${flight.stops} Stop${flight.stops > 1 ? 's' : ''}`}
-                              </span>
-                            </div>
-
-                            <div className="text-right">
-                              <span className="text-base font-bold text-white block">
-                                {new Date(flight.arrivalTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              <span className="text-xs text-slate-400 font-bold bg-[#011420] px-1.5 py-0.5 rounded mt-0.5 inline-block">
-                                {flight.arrivalAirport}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Price & Selection */}
-                          <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 border-white/5 pt-3 sm:pt-0 gap-2 min-w-[140px]">
-                            <div className="text-right">
-                              <span className="text-xs text-slate-400 line-through block">
-                                ৳{(flight.basePrice + flight.tax).toLocaleString()}
-                              </span>
-                              <span className="text-base font-bold font-display text-white block text-glow">
-                                ৳{totalCustomerInvoice.toLocaleString()}
-                              </span>
-                              <span className="text-[9px] text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded mt-0.5 inline-block">
-                                Refundable Tag
-                              </span>
-                            </div>
-
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setExpandedFlightId(isExpanded ? null : flight.id)}
-                                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-300 hover:text-white transition-colors"
-                              >
-                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => dispatch(setSelectedFlight(flight))}
-                                className="px-4 py-2 rounded-xl bg-brand-cyan text-slate-950 font-bold text-xs hover:bg-brand-cyan-light transition-all shadow-md shadow-brand-cyan/15 cursor-pointer"
-                              >
-                                Book Now
-                              </button>
-                            </div>
-                          </div>
-
-                        </div>
-
-                        {/* Extended Details Panel */}
-                        {isExpanded && (
-                          <div className="bg-[#011420]/80 border-t border-white/5 p-4 sm:p-5 space-y-4 animate-in slide-in-from-top duration-300">
-                            
-                            {/* Segment Mapping */}
-                            <div className="space-y-4">
-                              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Flight Routing Segment Details</span>
-                              {flight.segments.map((seg, sIdx) => (
-                                <div key={sIdx} className="flex gap-4 items-start relative pl-6 border-l border-white/10">
-                                  <div className="absolute left-[-4px] top-1.5 w-2 h-2 rounded-full bg-brand-cyan" />
-                                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-                                    <div>
-                                      <span className="text-slate-400 block">Flight Number</span>
-                                      <span className="font-semibold text-white">{seg.flightNumber} ({seg.aircraft})</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-slate-400 block">From Airport</span>
-                                      <span className="font-semibold text-white">{seg.departureAirport} → {seg.arrivalAirport}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-slate-400 block">Departure</span>
-                                      <span className="font-semibold text-white">
-                                        {new Date(seg.departureTime).toLocaleDateString()} {new Date(seg.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                      </span>
-                                    </div>
-                                    <div>
-                                      <span className="text-slate-400 block">Baggage Limit</span>
-                                      <span className="font-semibold text-white">{seg.baggage}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-
-                            {/* GDS Fare Rules Summary */}
-                            <div className="bg-[#011a29] border border-white/5 rounded-xl p-3 text-[10px] text-slate-400 leading-relaxed flex items-start gap-2">
-                              <Info className="w-4 h-4 text-brand-cyan shrink-0 mt-0.5" />
-                              <p>
-                                <b>Fare Rules:</b> {flight.fareRule} GDS commissions of 7% (BDT {commission.toLocaleString()}) are refunded to agent. Custom markup BDT {customMarkup.toLocaleString()} applied.
-                              </p>
-                            </div>
-
-                          </div>
-                        )}
-
-                      </div>
-                    );
-                  })
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-          {/* Interactive Checkout Modal Form */}
-          {selectedFlight && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm" onClick={() => dispatch(setSelectedFlight(null))} />
-              
-              <div className="relative w-full max-w-2xl bg-[#011d2c] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto z-10 animate-in zoom-in-95 duration-300">
-                <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                  <div className="flex items-center gap-2">
-                    <Ticket className="w-5 h-5 text-brand-cyan" />
-                    <h3 className="font-display font-semibold text-lg text-white">Passenger Details & Issuance</h3>
-                  </div>
-                  <button 
-                    onClick={() => dispatch(setSelectedFlight(null))}
-                    className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {checkoutSuccessPnr ? (
-                  /* Success ticket view */
-                  <div className="text-center py-6 space-y-4">
-                    <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto text-emerald-400 animate-bounce">
-                      <ShieldCheck className="w-7 h-7" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <h4 className="font-display font-bold text-white text-xl">Ticket Issued Successfully!</h4>
-                      <p className="text-xs text-slate-400">
-                        PNR ticket record locator has been successfully written to GDS channels.
-                      </p>
-                    </div>
-                    
-                    <div className="bg-[#011420] border border-white/10 rounded-2xl p-5 max-w-sm mx-auto space-y-3 text-left">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">PNR Record Locator:</span>
-                        <span className="font-bold text-white font-mono tracking-wider">{checkoutSuccessPnr}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">Passenger Name:</span>
-                        <span className="font-semibold text-white">{passengerDetails.lastName}/{passengerDetails.firstName}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">Sector routing:</span>
-                        <span className="font-semibold text-white">{selectedFlight.departureAirport} → {selectedFlight.arrivalAirport}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-slate-400">Flight number:</span>
-                        <span className="font-semibold text-white">{selectedFlight.flightNumber}</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        dispatch(setSelectedFlight(null));
-                        setCheckoutSuccessPnr(null);
-                      }}
-                      className="px-6 py-2.5 rounded-xl bg-brand-cyan text-slate-950 font-bold text-xs hover:bg-brand-cyan-light transition-all"
-                    >
-                      Return to Flight Search
-                    </button>
-                  </div>
-                ) : (
-                  /* Form input fields */
-                  <form onSubmit={handleCheckoutSubmit} className="space-y-5">
-                    
-                    {/* Display errors */}
-                    {checkoutError && (
-                      <div className="bg-rose-500/10 border border-rose-500/25 text-rose-400 rounded-xl p-3.5 text-xs flex items-center gap-2 font-medium">
-                        <AlertTriangle className="w-4 h-4 shrink-0" />
-                        <span>{checkoutError}</span>
+              {searchTriggered && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-300">
+                  {/* Filters & Markup Sidebar */}
+                  <div className="lg:col-span-4 space-y-6">
+                    {selectedFlight ? (
+                      <MarkupSlider
+                        basePrice={selectedFlight.basePrice}
+                        tax={selectedFlight.tax}
+                      />
+                    ) : filteredFlights.length > 0 ? (
+                      <MarkupSlider
+                        basePrice={filteredFlights[0].basePrice}
+                        tax={filteredFlights[0].tax}
+                      />
+                    ) : (
+                      <div className="glass-card rounded-2xl p-4 text-xs text-slate-400 text-center italic border-white/5">
+                        Search flight results to configure live markups
                       </div>
                     )}
+                    <FlightFilters />
+                  </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Title</label>
-                        <select
-                          value={passengerDetails.title}
-                          onChange={(e) => setPassengerDetails({ ...passengerDetails, title: e.target.value })}
-                          className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                        >
-                          <option value="Mr">Mr.</option>
-                          <option value="Mrs">Mrs.</option>
-                          <option value="Ms">Ms.</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">First Name (as Passport)</label>
-                        <input
-                          type="text"
-                          required
-                          value={passengerDetails.firstName}
-                          onChange={(e) => setPassengerDetails({ ...passengerDetails, firstName: e.target.value })}
-                          placeholder="e.g. Anisur"
-                          className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Last Name (as Passport)</label>
-                        <input
-                          type="text"
-                          required
-                          value={passengerDetails.lastName}
-                          onChange={(e) => setPassengerDetails({ ...passengerDetails, lastName: e.target.value })}
-                          placeholder="e.g. Rahman"
-                          className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                        />
-                      </div>
-                    </div>
+                  {/* Results List */}
+                  <div className="lg:col-span-8">
+                    <FlightResultsList />
+                  </div>
+                </div>
+              )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Gender</label>
-                        <select
-                          value={passengerDetails.gender}
-                          onChange={(e) => setPassengerDetails({ ...passengerDetails, gender: e.target.value })}
-                          className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                        >
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Date of Birth</label>
-                        <input
-                          type="date"
-                          required
-                          value={passengerDetails.dob}
-                          onChange={(e) => setPassengerDetails({ ...passengerDetails, dob: e.target.value })}
-                          className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Nationality</label>
-                        <input
-                          type="text"
-                          required
-                          value={passengerDetails.nationality}
-                          onChange={(e) => setPassengerDetails({ ...passengerDetails, nationality: e.target.value })}
-                          className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Passport Number</label>
-                        <input
-                          type="text"
-                          required
-                          value={passengerDetails.passportNumber}
-                          onChange={(e) => setPassengerDetails({ ...passengerDetails, passportNumber: e.target.value })}
-                          placeholder="e.g. A01824921"
-                          className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Passport Expiry</label>
-                        <input
-                          type="date"
-                          required
-                          value={passengerDetails.passportExpiry}
-                          onChange={(e) => setPassengerDetails({ ...passengerDetails, passportExpiry: e.target.value })}
-                          className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Summary B2B cost breakout */}
-                    <div className="bg-[#011420] border border-white/5 rounded-2xl p-4 space-y-2 text-xs text-slate-400">
-                      <div className="flex justify-between">
-                        <span>Agent Net Cost (Debited from B2B Wallet):</span>
-                        <span className="font-bold text-white">
-                          ৳{((selectedFlight.basePrice + selectedFlight.tax) - (selectedFlight.basePrice * commissionRate)).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Applied Profit Markup:</span>
-                        <span className="font-bold text-brand-cyan">
-                          + ৳{(markupType === 'fixed' ? markupValue : selectedFlight.basePrice * (markupValue / 100)).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between border-t border-white/10 pt-2 text-sm">
-                        <span className="font-semibold text-slate-200">Customer Ticket Invoice price:</span>
-                        <span className="font-bold text-white font-display">
-                          ৳{(((selectedFlight.basePrice + selectedFlight.tax) - (selectedFlight.basePrice * commissionRate)) + (markupType === 'fixed' ? markupValue : selectedFlight.basePrice * (markupValue / 100))).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="w-full py-3.5 rounded-xl bg-brand-cyan text-slate-950 font-bold text-sm hover:bg-brand-cyan-light transition-all shadow-lg shadow-brand-cyan/20 cursor-pointer"
-                    >
-                      Issue Electronic Ticket (Confirm GDS Booking)
-                    </button>
-                  </form>
-                )}
-
-              </div>
+              {selectedFlight && <FlightCheckout />}
             </div>
           )}
 
+          {activeService === 'hotels' && <HotelDashboard />}
+
+          {activeService === 'tours' && <TourDashboard />}
         </div>
       )}
 
-      {/* Bookings Queue and Void Ticketing Manager */}
+      {/* Bookings Queue */}
       {activeTab === 'bookings' && (
         <div className="glass-card rounded-3xl p-6 border-white/5 space-y-6">
-          <div className="flex justify-between items-center border-b border-white/5 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
             <div>
               <h3 className="font-display font-semibold text-white text-base">Bookings Queue</h3>
-              <p className="text-xs text-slate-400">Track GDS issuances and process ticket voids.</p>
+              <p className="text-xs text-slate-400">Track and manage issued inventory across all services.</p>
             </div>
+            <ServiceTabs activeService={activeBookingsTab} onChange={setActiveBookingsTab} variant="compact" />
           </div>
 
-          {bookings.length === 0 ? (
-            <div className="text-center py-16 space-y-2">
-              <FileText className="w-10 h-10 text-slate-500 mx-auto" />
-              <h4 className="font-display font-semibold text-white text-sm">No issued tickets yet</h4>
-              <p className="text-xs text-slate-400">Issued flight bookings will show up in this ticketing queue.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs text-slate-300">
-                <thead>
-                  <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="py-3 px-2">PNR</th>
-                    <th className="py-3 px-2">Flight Segment</th>
-                    <th className="py-3 px-2">Passenger</th>
-                    <th className="py-3 px-2">Markup</th>
-                    <th className="py-3 px-2">Total Customer</th>
-                    <th className="py-3 px-2">Profit</th>
-                    <th className="py-3 px-2">Status</th>
-                    <th className="py-3 px-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map((booking) => (
-                    <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
-                      <td className="py-4 px-2 font-bold font-mono tracking-wider text-white">{booking.pnr}</td>
-                      <td className="py-4 px-2">
-                        <span className="font-semibold text-white block">{booking.flight.flightNumber}</span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">
-                          {booking.flight.departureAirport} → {booking.flight.arrivalAirport} ({booking.flight.cabinClass})
-                        </span>
-                      </td>
-                      <td className="py-4 px-2">
-                        <span className="font-semibold block">{booking.passengers[0]?.lastName}/{booking.passengers[0]?.firstName}</span>
-                        <span className="text-[10px] text-slate-400 block mt-0.5">{booking.passengers[0]?.passportNumber}</span>
-                      </td>
-                      <td className="py-4 px-2 font-medium">৳{booking.markupApplied.toLocaleString()}</td>
-                      <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
-                      <td className="py-4 px-2 font-semibold text-emerald-400">৳{booking.agentProfit.toLocaleString()}</td>
-                      <td className="py-4 px-2">
-                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                          booking.status === 'Ticketed'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                        }`}>
-                          {booking.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-2 text-right">
-                        {booking.status === 'Ticketed' && (
-                          <button
-                            onClick={() => handleVoidTicket(booking.id)}
-                            className="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 text-[10px] font-bold transition-all cursor-pointer"
-                          >
-                            Void Ticket (Refund)
-                          </button>
-                        )}
-                      </td>
+          {/* Flights Bookings Queue */}
+          {activeBookingsTab === 'flights' && (
+            flightBookings.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <FileText className="w-10 h-10 text-slate-500 mx-auto" />
+                <h4 className="font-display font-semibold text-white text-sm">No flight tickets issued yet</h4>
+                <p className="text-xs text-slate-400">Issued flight tickets will show up in this queue.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs text-slate-300">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="py-3 px-2">PNR</th>
+                      <th className="py-3 px-2">Flight Segment</th>
+                      <th className="py-3 px-2">Passenger</th>
+                      <th className="py-3 px-2">Markup</th>
+                      <th className="py-3 px-2">Total Paid</th>
+                      <th className="py-3 px-2">Profit</th>
+                      <th className="py-3 px-2">Status</th>
+                      <th className="py-3 px-2 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {flightBookings.map((booking) => (
+                      <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
+                        <td className="py-4 px-2 font-bold font-mono tracking-wider text-white">{booking.pnr}</td>
+                        <td className="py-4 px-2">
+                          <span className="font-semibold text-white block">{booking.flight.flightNumber}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">
+                            {booking.flight.departureAirport} → {booking.flight.arrivalAirport} ({booking.flight.cabinClass})
+                          </span>
+                        </td>
+                        <td className="py-4 px-2">
+                          <span className="font-semibold block">{booking.passengers[0]?.lastName}/{booking.passengers[0]?.firstName}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.passengers[0]?.passportNumber}</span>
+                        </td>
+                        <td className="py-4 px-2 font-medium">৳{booking.markupApplied.toLocaleString()}</td>
+                        <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
+                        <td className="py-4 px-2 font-semibold text-emerald-400">৳{booking.agentProfit.toLocaleString()}</td>
+                        <td className="py-4 px-2">
+                          <StatusBadge status={booking.status === 'Ticketed' ? 'Ticketed' : 'Cancelled'} />
+                        </td>
+                        <td className="py-4 px-2 text-right">
+                          {booking.status === 'Ticketed' && (
+                            <button
+                              onClick={() => handleVoidFlightTicket(booking.id)}
+                              className="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 text-[10px] font-bold transition-all cursor-pointer"
+                            >
+                              Void Ticket
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+
+          {/* Hotels Bookings Queue */}
+          {activeBookingsTab === 'hotels' && (
+            hotelBookings.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <Building2 className="w-10 h-10 text-slate-500 mx-auto" />
+                <h4 className="font-display font-semibold text-white text-sm">No hotel reservations confirmed yet</h4>
+                <p className="text-xs text-slate-400">Confirmed hotel stays will show up in this queue.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs text-slate-300">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="py-3 px-2">Confirmation No</th>
+                      <th className="py-3 px-2">Hotel</th>
+                      <th className="py-3 px-2">Room Type</th>
+                      <th className="py-3 px-2">Lead Guest</th>
+                      <th className="py-3 px-2">Stay Details</th>
+                      <th className="py-3 px-2">Total Paid</th>
+                      <th className="py-3 px-2">Markup</th>
+                      <th className="py-3 px-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {hotelBookings.map((booking) => (
+                      <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
+                        <td className="py-4 px-2 font-bold font-mono tracking-wider text-white">{booking.confirmationNumber}</td>
+                        <td className="py-4 px-2">
+                          <span className="font-semibold text-white block">{booking.hotel.name}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.hotel.city}, {booking.hotel.country}</span>
+                        </td>
+                        <td className="py-4 px-2">
+                          <span className="font-medium text-slate-300 block">{booking.roomType.name}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.ratePlan.name}</span>
+                        </td>
+                        <td className="py-4 px-2">
+                          <span className="font-semibold block">{booking.guestName}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.guestPhone}</span>
+                        </td>
+                        <td className="py-4 px-2">
+                          <span className="font-medium block">{booking.nights} night{booking.nights > 1 ? 's' : ''}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.rooms} room{booking.rooms > 1 ? 's' : ''}</span>
+                        </td>
+                        <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
+                        <td className="py-4 px-2 font-semibold text-brand-cyan">৳{booking.markupApplied.toLocaleString()}</td>
+                        <td className="py-4 px-2">
+                          <StatusBadge status={booking.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+
+          {/* Tours Bookings Queue */}
+          {activeBookingsTab === 'tours' && (
+            tourBookings.length === 0 ? (
+              <div className="text-center py-16 space-y-2">
+                <Compass className="w-10 h-10 text-slate-500 mx-auto" />
+                <h4 className="font-display font-semibold text-white text-sm">No tour package bookings confirmed yet</h4>
+                <p className="text-xs text-slate-400">Confirmed tour bookings will show up in this queue.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs text-slate-300">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                      <th className="py-3 px-2">Booking Ref</th>
+                      <th className="py-3 px-2">Tour Package</th>
+                      <th className="py-3 px-2">Lead Traveler</th>
+                      <th className="py-3 px-2">Start Date</th>
+                      <th className="py-3 px-2">Travelers</th>
+                      <th className="py-3 px-2">Total Paid</th>
+                      <th className="py-3 px-2">Profit</th>
+                      <th className="py-3 px-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tourBookings.map((booking) => (
+                      <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
+                        <td className="py-4 px-2 font-bold font-mono tracking-wider text-white">{booking.confirmationNumber}</td>
+                        <td className="py-4 px-2">
+                          <span className="font-semibold text-white block">{booking.tourPackage.name}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.tourPackage.destination} ({booking.tourPackage.durationDays} Days)</span>
+                        </td>
+                        <td className="py-4 px-2">
+                          <span className="font-semibold block">{booking.leadTravelerName}</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.leadTravelerEmail}</span>
+                        </td>
+                        <td className="py-4 px-2">
+                          <span className="font-medium text-slate-300 block">
+                            {new Date(booking.startDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
+                          </span>
+                        </td>
+                        <td className="py-4 px-2 font-semibold">
+                          {booking.adults}A {booking.children > 0 ? `· ${booking.children}C` : ''}
+                        </td>
+                        <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
+                        <td className="py-4 px-2 font-semibold text-emerald-400">৳{booking.agentProfit.toLocaleString()}</td>
+                        <td className="py-4 px-2">
+                          <StatusBadge status={booking.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
           )}
         </div>
       )}
 
-      {/* Financial statement sheet log */}
+      {/* Financial statement ledger */}
       {activeTab === 'ledger' && (
         <div className="glass-card rounded-3xl p-6 border-white/5 space-y-6">
           <div>
@@ -1028,10 +388,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
                     <td className="py-4 px-2">
                       <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                         txn.type === 'Deposit'
-                          ? 'bg-emerald-500/10 text-emerald-400'
-                          : txn.type === 'Void Ticket' || txn.type === 'Refund'
-                          ? 'bg-cyan-500/10 text-cyan-400'
-                          : 'bg-rose-500/10 text-rose-400'
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          : txn.type === 'Void Ticket' || txn.type === 'Refund' || txn.type === 'Hotel Cancellation' || txn.type === 'Tour Cancellation'
+                          ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                       }`}>
                         {txn.type}
                       </span>
@@ -1042,15 +402,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
                     </td>
                     <td className="py-4 px-2 font-semibold text-slate-200">৳{txn.balanceAfter.toLocaleString()}</td>
                     <td className="py-4 px-2">
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                        txn.status === 'Success'
-                          ? 'bg-emerald-500/10 text-emerald-400'
-                          : txn.status === 'Pending'
-                          ? 'bg-amber-500/10 text-amber-400 animate-pulse'
-                          : 'bg-rose-500/10 text-rose-400'
-                      }`}>
-                        {txn.status}
-                      </span>
+                      <StatusBadge status={txn.status} />
                     </td>
                   </tr>
                 ))}
@@ -1060,7 +412,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
         </div>
       )}
 
-      {/* Request Deposit form submission */}
+      {/* Request Deposit form */}
       {activeTab === 'deposit' && (
         <div className="max-w-xl mx-auto glass-card rounded-3xl p-6 border-white/5 space-y-6">
           <div>
@@ -1098,12 +450,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
               <select
                 value={depositBank}
                 onChange={(e) => setDepositBank(e.target.value)}
-                className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-brand-cyan [color-scheme:dark]"
               >
-                <option value="Standard Chartered Bank">Standard Chartered Bank (SCB)</option>
-                <option value="City Bank Ltd">The City Bank Ltd</option>
-                <option value="Mutual Trust Bank">Mutual Trust Bank (MTB)</option>
-                <option value="bKash (MFS Transfer)">bKash (Mobile Transfer)</option>
+                <option value="Standard Chartered Bank" className="bg-slate-900">Standard Chartered Bank (SCB)</option>
+                <option value="City Bank Ltd" className="bg-slate-900">The City Bank Ltd</option>
+                <option value="Mutual Trust Bank" className="bg-slate-900">Mutual Trust Bank (MTB)</option>
+                <option value="bKash (MFS Transfer)" className="bg-slate-900">bKash (Mobile Transfer)</option>
               </select>
             </div>
 
@@ -1129,7 +481,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
           </form>
         </div>
       )}
-
     </div>
   );
 };
