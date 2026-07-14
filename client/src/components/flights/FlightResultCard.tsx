@@ -32,12 +32,14 @@ export const FlightResultCard: React.FC<FlightResultCardProps> = ({
 
   return (
     <div
-      className={`glass-card rounded-2xl border transition-all duration-300 overflow-hidden ${
+      className={`glass-card rounded-2xl border transition-all duration-300 overflow-hidden hover-lift relative ${
         isExpanded
           ? 'border-brand-cyan shadow-md shadow-brand-cyan/5 bg-brand-cyan/2'
           : 'border-white/5 hover:border-white/15 hover:bg-white/1'
       }`}
     >
+      {/* Premium left accent */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl transition-all ${isExpanded ? 'bg-gradient-to-b from-brand-cyan to-brand-cyan-light' : 'bg-gradient-to-b from-brand-cyan/40 to-transparent'}`} />
       {/* Main Summary strip */}
       <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         
@@ -111,7 +113,7 @@ export const FlightResultCard: React.FC<FlightResultCardProps> = ({
             <button
               type="button"
               onClick={() => dispatch(setSelectedFlight(flight))}
-              className="px-4 py-2 rounded-xl bg-brand-cyan text-slate-950 font-bold text-xs hover:bg-brand-cyan-light transition-all shadow-md shadow-brand-cyan/15 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-brand-cyan text-slate-950 font-bold text-xs hover:bg-brand-cyan-light transition-all shadow-md shadow-brand-cyan/15 cursor-pointer btn-shimmer"
             >
               Book Now
             </button>

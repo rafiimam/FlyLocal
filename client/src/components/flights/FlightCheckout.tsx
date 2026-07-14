@@ -96,19 +96,23 @@ export const FlightCheckout: React.FC = () => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm" onClick={() => dispatch(setSelectedFlight(null))} />
       
-      <div className="relative w-full max-w-2xl bg-[#011d2c] border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto z-10 animate-in zoom-in-95 duration-300">
-        <div className="flex justify-between items-center border-b border-white/5 pb-3">
+      <div className="relative w-full max-w-2xl bg-[#011d2c] border border-white/10 rounded-3xl shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto z-10 animate-in zoom-in-95 duration-300">
+        <div className="flex justify-between items-center p-6 sm:p-8 pb-4 bg-gradient-to-r from-brand-cyan/10 via-transparent to-transparent border-b border-white/5 rounded-t-3xl">
           <div className="flex items-center gap-2">
-            <Ticket className="w-5 h-5 text-brand-cyan" />
+            <div className="w-9 h-9 rounded-xl bg-brand-cyan/15 border border-brand-cyan/25 flex items-center justify-center">
+              <Ticket className="w-5 h-5 text-brand-cyan" />
+            </div>
             <h3 className="font-display font-semibold text-lg text-white">Passenger Details & Issuance</h3>
           </div>
           <button 
             onClick={() => dispatch(setSelectedFlight(null))}
-            className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
+            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        <div className="px-6 sm:px-8 pb-6 sm:pb-8 space-y-6">
 
         {checkoutSuccessPnr ? (
           /* Success ticket view */
@@ -170,7 +174,7 @@ export const FlightCheckout: React.FC = () => {
                 <select
                   value={passengerDetails.title}
                   onChange={(e) => setPassengerDetails({ ...passengerDetails, title: e.target.value })}
-                  className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan [color-scheme:dark]"
+                  className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan/50 focus:ring-2 focus:ring-brand-cyan/10 [color-scheme:dark] transition-all"
                 >
                   <option value="Mr">Mr.</option>
                   <option value="Mrs">Mrs.</option>
@@ -185,7 +189,7 @@ export const FlightCheckout: React.FC = () => {
                   placeholder="First name..."
                   value={passengerDetails.firstName}
                   onChange={(e) => setPassengerDetails({ ...passengerDetails, firstName: e.target.value })}
-                  className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan"
+                  className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-cyan/50 focus:ring-2 focus:ring-brand-cyan/10 transition-all"
                 />
               </div>
               <div>
@@ -286,7 +290,7 @@ export const FlightCheckout: React.FC = () => {
               </div>
               <button
                 type="submit"
-                className="px-6 py-3 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-cyan-light text-slate-950 font-bold text-xs shadow-lg shadow-brand-cyan/20 hover:shadow-brand-cyan/35 transition-all cursor-pointer"
+                className="px-6 py-3 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-cyan-light text-slate-950 font-bold text-xs shadow-lg shadow-brand-cyan/20 hover:shadow-brand-cyan/35 transition-all cursor-pointer btn-shimmer"
               >
                 Issue GDS Seat
               </button>
@@ -294,6 +298,7 @@ export const FlightCheckout: React.FC = () => {
 
           </form>
         )}
+        </div>
       </div>
     </div>
   );

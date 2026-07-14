@@ -27,7 +27,7 @@ export const HotelResultCard: React.FC<HotelResultCardProps> = ({ hotel, onSelec
 
   return (
     <div
-      className="glass-card rounded-2xl border border-white/5 hover:border-amber-500/20 transition-all overflow-hidden cursor-pointer group"
+      className="glass-card rounded-2xl border border-white/5 hover:border-amber-500/20 transition-all overflow-hidden cursor-pointer group hover-lift"
       onClick={() => onSelect(hotel)}
     >
       {/* Hotel Image Placeholder */}
@@ -54,6 +54,8 @@ export const HotelResultCard: React.FC<HotelResultCardProps> = ({ hotel, onSelec
             <span className="text-[9px] font-bold text-emerald-400 uppercase">Free Cancellation</span>
           </div>
         )}
+        {/* Gradient overlay for depth */}
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#011d2c] to-transparent" />
       </div>
 
       {/* Hotel Details */}
@@ -96,7 +98,7 @@ export const HotelResultCard: React.FC<HotelResultCardProps> = ({ hotel, onSelec
           </div>
           <div className="text-right">
             <span className="text-[10px] text-amber-400 block mb-1">{roomTypeCount} room type{roomTypeCount > 1 ? 's' : ''}</span>
-            <button className="px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-500/25 text-amber-400 text-xs font-bold hover:bg-amber-500/25 transition-all cursor-pointer">
+            <button className="px-4 py-2 rounded-xl bg-amber-500/15 border border-amber-500/25 text-amber-400 text-xs font-bold hover:bg-amber-500/25 transition-all cursor-pointer btn-shimmer">
               View Rooms
             </button>
           </div>
