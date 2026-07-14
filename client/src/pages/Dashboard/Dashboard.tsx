@@ -25,7 +25,16 @@ import {
   Send, 
   Building2,
   Compass,
-  ShieldCheck
+  ShieldCheck,
+  Plane,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
+  Wallet,
+  CreditCard,
+  BarChart3,
+  Calendar,
+  Map
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -114,6 +123,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
     dispatch(voidBookingTicket({ bookingId, refundAmount, newTxn }));
   };
 
+  // Compute booking stats
+  const totalFlightRevenue = flightBookings.reduce((s, b) => s + b.totalClientPaid, 0);
+  const totalFlightProfit = flightBookings.reduce((s, b) => s + b.agentProfit, 0);
+  const totalHotelRevenue = hotelBookings.reduce((s, b) => s + b.totalClientPaid, 0);
+  const totalHotelProfit = hotelBookings.reduce((s, b) => s + b.agentProfit, 0);
+  const totalTourRevenue = tourBookings.reduce((s, b) => s + b.totalClientPaid, 0);
+  const totalTourProfit = tourBookings.reduce((s, b) => s + b.agentProfit, 0);
+  const totalBookingsCount = flightBookings.length + hotelBookings.length + tourBookings.length;
+
+  // Ledger stats
+  const totalDeposits = ledger.filter(t => t.type === 'Deposit' && t.status === 'Success').reduce((s, t) => s + t.amount, 0);
+  const totalSpent = ledger.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+  const pendingDeposits = ledger.filter(t => t.type === 'Deposit' && t.status === 'Pending').length;
+
   return (
     <div className="space-y-6">
       {/* Search & Book Dashboard Area */}
@@ -173,312 +196,509 @@ export const Dashboard: React.FC<DashboardProps> = ({ activeTab }) => {
 
       {/* Bookings Queue */}
       {activeTab === 'bookings' && (
-        <div className="glass-card rounded-3xl p-6 border-white/5 space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
-            <div>
-              <h3 className="font-display font-semibold text-white text-base">Bookings Queue</h3>
-              <p className="text-xs text-slate-400">Track and manage issued inventory across all services.</p>
+        <div className="space-y-6">
+          {/* Summary Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="glass-card rounded-2xl p-5 border-brand-cyan/15 group hover:border-brand-cyan/30 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-brand-cyan/15 border border-brand-cyan/25 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-brand-cyan" />
+                </div>
+                <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">Total</span>
+              </div>
+              <span className="text-2xl font-display font-bold text-white block">{totalBookingsCount}</span>
+              <span className="text-[10px] text-slate-400">Bookings across all services</span>
             </div>
-            <ServiceTabs activeService={activeBookingsTab} onChange={setActiveBookingsTab} variant="compact" />
+
+            <div className="glass-card rounded-2xl p-5 border-brand-cyan/15 group hover:border-brand-cyan/30 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-brand-cyan/15 border border-brand-cyan/25 flex items-center justify-center">
+                  <Plane className="w-5 h-5 text-brand-cyan transform -rotate-45" />
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-brand-cyan font-semibold">
+                  <ArrowUpRight className="w-3 h-3" />
+                  <span>{flightBookings.length} tickets</span>
+                </div>
+              </div>
+              <span className="text-2xl font-display font-bold text-white block">৳{totalFlightRevenue.toLocaleString()}</span>
+              <span className="text-[10px] text-emerald-400 font-semibold">Profit: ৳{totalFlightProfit.toLocaleString()}</span>
+            </div>
+
+            <div className="glass-card rounded-2xl p-5 border-amber-500/15 group hover:border-amber-500/30 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
+                  <Building2 className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-amber-400 font-semibold">
+                  <ArrowUpRight className="w-3 h-3" />
+                  <span>{hotelBookings.length} stays</span>
+                </div>
+              </div>
+              <span className="text-2xl font-display font-bold text-white block">৳{totalHotelRevenue.toLocaleString()}</span>
+              <span className="text-[10px] text-emerald-400 font-semibold">Profit: ৳{totalHotelProfit.toLocaleString()}</span>
+            </div>
+
+            <div className="glass-card rounded-2xl p-5 border-emerald-500/15 group hover:border-emerald-500/30 transition-all">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                  <Map className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-semibold">
+                  <ArrowUpRight className="w-3 h-3" />
+                  <span>{tourBookings.length} tours</span>
+                </div>
+              </div>
+              <span className="text-2xl font-display font-bold text-white block">৳{totalTourRevenue.toLocaleString()}</span>
+              <span className="text-[10px] text-emerald-400 font-semibold">Profit: ৳{totalTourProfit.toLocaleString()}</span>
+            </div>
           </div>
 
-          {/* Flights Bookings Queue */}
-          {activeBookingsTab === 'flights' && (
-            flightBookings.length === 0 ? (
-              <div className="text-center py-16 space-y-2">
-                <FileText className="w-10 h-10 text-slate-500 mx-auto" />
-                <h4 className="font-display font-semibold text-white text-sm">No flight tickets issued yet</h4>
-                <p className="text-xs text-slate-400">Issued flight tickets will show up in this queue.</p>
+          {/* Bookings Table */}
+          <div className="glass-card rounded-3xl border-white/5 overflow-hidden">
+            {/* Table Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-white/5 bg-gradient-to-r from-slate-950/50 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-cyan/20 to-brand-navy-light flex items-center justify-center border border-white/10">
+                  <FileText className="w-5 h-5 text-brand-cyan" />
+                </div>
+                <div>
+                  <h3 className="font-display font-semibold text-white text-base">Bookings Queue</h3>
+                  <p className="text-[10px] text-slate-400">Track and manage issued inventory across all services.</p>
+                </div>
               </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs text-slate-300">
-                  <thead>
-                    <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                      <th className="py-3 px-2">PNR</th>
-                      <th className="py-3 px-2">Flight Segment</th>
-                      <th className="py-3 px-2">Passenger</th>
-                      <th className="py-3 px-2">Markup</th>
-                      <th className="py-3 px-2">Total Paid</th>
-                      <th className="py-3 px-2">Profit</th>
-                      <th className="py-3 px-2">Status</th>
-                      <th className="py-3 px-2 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {flightBookings.map((booking) => (
-                      <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
-                        <td className="py-4 px-2 font-bold font-mono tracking-wider text-white">{booking.pnr}</td>
-                        <td className="py-4 px-2">
-                          <span className="font-semibold text-white block">{booking.flight.flightNumber}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">
-                            {booking.flight.departureAirport} → {booking.flight.arrivalAirport} ({booking.flight.cabinClass})
-                          </span>
-                        </td>
-                        <td className="py-4 px-2">
-                          <span className="font-semibold block">{booking.passengers[0]?.lastName}/{booking.passengers[0]?.firstName}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.passengers[0]?.passportNumber}</span>
-                        </td>
-                        <td className="py-4 px-2 font-medium">৳{booking.markupApplied.toLocaleString()}</td>
-                        <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
-                        <td className="py-4 px-2 font-semibold text-emerald-400">৳{booking.agentProfit.toLocaleString()}</td>
-                        <td className="py-4 px-2">
-                          <StatusBadge status={booking.status === 'Ticketed' ? 'Ticketed' : 'Cancelled'} />
-                        </td>
-                        <td className="py-4 px-2 text-right">
-                          {booking.status === 'Ticketed' && (
-                            <button
-                              onClick={() => handleVoidFlightTicket(booking.id)}
-                              className="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 text-[10px] font-bold transition-all cursor-pointer"
-                            >
-                              Void Ticket
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          )}
+              <ServiceTabs activeService={activeBookingsTab} onChange={setActiveBookingsTab} variant="compact" />
+            </div>
 
-          {/* Hotels Bookings Queue */}
-          {activeBookingsTab === 'hotels' && (
-            hotelBookings.length === 0 ? (
-              <div className="text-center py-16 space-y-2">
-                <Building2 className="w-10 h-10 text-slate-500 mx-auto" />
-                <h4 className="font-display font-semibold text-white text-sm">No hotel reservations confirmed yet</h4>
-                <p className="text-xs text-slate-400">Confirmed hotel stays will show up in this queue.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs text-slate-300">
-                  <thead>
-                    <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                      <th className="py-3 px-2">Confirmation No</th>
-                      <th className="py-3 px-2">Hotel</th>
-                      <th className="py-3 px-2">Room Type</th>
-                      <th className="py-3 px-2">Lead Guest</th>
-                      <th className="py-3 px-2">Stay Details</th>
-                      <th className="py-3 px-2">Total Paid</th>
-                      <th className="py-3 px-2">Markup</th>
-                      <th className="py-3 px-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hotelBookings.map((booking) => (
-                      <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
-                        <td className="py-4 px-2 font-bold font-mono tracking-wider text-white">{booking.confirmationNumber}</td>
-                        <td className="py-4 px-2">
-                          <span className="font-semibold text-white block">{booking.hotel.name}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.hotel.city}, {booking.hotel.country}</span>
-                        </td>
-                        <td className="py-4 px-2">
-                          <span className="font-medium text-slate-300 block">{booking.roomType.name}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.ratePlan.name}</span>
-                        </td>
-                        <td className="py-4 px-2">
-                          <span className="font-semibold block">{booking.guestName}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.guestPhone}</span>
-                        </td>
-                        <td className="py-4 px-2">
-                          <span className="font-medium block">{booking.nights} night{booking.nights > 1 ? 's' : ''}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.rooms} room{booking.rooms > 1 ? 's' : ''}</span>
-                        </td>
-                        <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
-                        <td className="py-4 px-2 font-semibold text-brand-cyan">৳{booking.markupApplied.toLocaleString()}</td>
-                        <td className="py-4 px-2">
-                          <StatusBadge status={booking.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          )}
+            <div className="p-6">
+              {/* Flights Bookings Queue */}
+              {activeBookingsTab === 'flights' && (
+                flightBookings.length === 0 ? (
+                  <div className="text-center py-16 space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-brand-cyan/10 border border-brand-cyan/20 flex items-center justify-center mx-auto">
+                      <Plane className="w-7 h-7 text-brand-cyan transform -rotate-45" />
+                    </div>
+                    <h4 className="font-display font-semibold text-white text-sm">No flight tickets issued yet</h4>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto">Issued flight tickets will show up in this queue. Start by searching for flights.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                          <th className="py-3 px-3 bg-slate-950/30 rounded-l-lg">PNR</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Flight Segment</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Passenger</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Markup</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Total Paid</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Profit</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Status</th>
+                          <th className="py-3 px-3 bg-slate-950/30 rounded-r-lg text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {flightBookings.map((booking, idx) => (
+                          <tr key={booking.id} className={`border-b border-white/5 hover:bg-brand-cyan/5 transition-all ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-950/20'}`}>
+                            <td className="py-4 px-3">
+                              <span className="font-bold font-mono tracking-wider text-brand-cyan bg-brand-cyan/10 px-2 py-1 rounded-lg">{booking.pnr}</span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-semibold text-white block">{booking.flight.flightNumber}</span>
+                              <span className="text-[10px] text-slate-400 block mt-0.5">
+                                {booking.flight.departureAirport} → {booking.flight.arrivalAirport} · <span className="text-brand-cyan">{booking.flight.cabinClass}</span>
+                              </span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-semibold text-slate-200 block">{booking.passengers[0]?.lastName}/{booking.passengers[0]?.firstName}</span>
+                              <span className="text-[10px] text-slate-500 block mt-0.5 font-mono">{booking.passengers[0]?.passportNumber}</span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-semibold text-amber-400">৳{booking.markupApplied.toLocaleString()}</span>
+                            </td>
+                            <td className="py-4 px-3 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
+                            <td className="py-4 px-3">
+                              <span className="font-bold text-emerald-400 flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                ৳{booking.agentProfit.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <StatusBadge status={booking.status === 'Ticketed' ? 'Ticketed' : 'Cancelled'} />
+                            </td>
+                            <td className="py-4 px-3 text-right">
+                              {booking.status === 'Ticketed' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleVoidFlightTicket(booking.id)}
+                                  className="px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 text-[10px] font-bold transition-all cursor-pointer"
+                                >
+                                  Void Ticket
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              )}
 
-          {/* Tours Bookings Queue */}
-          {activeBookingsTab === 'tours' && (
-            tourBookings.length === 0 ? (
-              <div className="text-center py-16 space-y-2">
-                <Compass className="w-10 h-10 text-slate-500 mx-auto" />
-                <h4 className="font-display font-semibold text-white text-sm">No tour package bookings confirmed yet</h4>
-                <p className="text-xs text-slate-400">Confirmed tour bookings will show up in this queue.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs text-slate-300">
-                  <thead>
-                    <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                      <th className="py-3 px-2">Booking Ref</th>
-                      <th className="py-3 px-2">Tour Package</th>
-                      <th className="py-3 px-2">Lead Traveler</th>
-                      <th className="py-3 px-2">Start Date</th>
-                      <th className="py-3 px-2">Travelers</th>
-                      <th className="py-3 px-2">Total Paid</th>
-                      <th className="py-3 px-2">Profit</th>
-                      <th className="py-3 px-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tourBookings.map((booking) => (
-                      <tr key={booking.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
-                        <td className="py-4 px-2 font-bold font-mono tracking-wider text-white">{booking.confirmationNumber}</td>
-                        <td className="py-4 px-2">
-                          <span className="font-semibold text-white block">{booking.tourPackage.name}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.tourPackage.destination} ({booking.tourPackage.durationDays} Days)</span>
-                        </td>
-                        <td className="py-4 px-2">
-                          <span className="font-semibold block">{booking.leadTravelerName}</span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5">{booking.leadTravelerEmail}</span>
-                        </td>
-                        <td className="py-4 px-2">
-                          <span className="font-medium text-slate-300 block">
-                            {new Date(booking.startDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
-                          </span>
-                        </td>
-                        <td className="py-4 px-2 font-semibold">
-                          {booking.adults}A {booking.children > 0 ? `· ${booking.children}C` : ''}
-                        </td>
-                        <td className="py-4 px-2 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
-                        <td className="py-4 px-2 font-semibold text-emerald-400">৳{booking.agentProfit.toLocaleString()}</td>
-                        <td className="py-4 px-2">
-                          <StatusBadge status={booking.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )
-          )}
+              {/* Hotels Bookings Queue */}
+              {activeBookingsTab === 'hotels' && (
+                hotelBookings.length === 0 ? (
+                  <div className="text-center py-16 space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto">
+                      <Building2 className="w-7 h-7 text-amber-400" />
+                    </div>
+                    <h4 className="font-display font-semibold text-white text-sm">No hotel reservations confirmed yet</h4>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto">Confirmed hotel stays will show up in this queue.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                          <th className="py-3 px-3 bg-slate-950/30 rounded-l-lg">Confirmation No</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Hotel</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Room Type</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Lead Guest</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Stay Details</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Total Paid</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Markup</th>
+                          <th className="py-3 px-3 bg-slate-950/30 rounded-r-lg">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {hotelBookings.map((booking, idx) => (
+                          <tr key={booking.id} className={`border-b border-white/5 hover:bg-amber-500/5 transition-all ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-950/20'}`}>
+                            <td className="py-4 px-3">
+                              <span className="font-bold font-mono tracking-wider text-amber-400 bg-amber-500/10 px-2 py-1 rounded-lg">{booking.confirmationNumber}</span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-semibold text-white block">{booking.hotel.name}</span>
+                              <span className="text-[10px] text-slate-400 block mt-0.5">{booking.hotel.city}, {booking.hotel.country}</span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-medium text-slate-200 block">{booking.roomType.name}</span>
+                              <span className="text-[10px] text-amber-400/80 block mt-0.5">{booking.ratePlan.name}</span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-semibold text-slate-200 block">{booking.guestName}</span>
+                              <span className="text-[10px] text-slate-500 block mt-0.5">{booking.guestPhone}</span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-semibold text-white block">{booking.nights} night{booking.nights > 1 ? 's' : ''}</span>
+                              <span className="text-[10px] text-slate-400 block mt-0.5">{booking.rooms} room{booking.rooms > 1 ? 's' : ''}</span>
+                            </td>
+                            <td className="py-4 px-3 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
+                            <td className="py-4 px-3">
+                              <span className="font-bold text-emerald-400 flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                ৳{booking.markupApplied.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <StatusBadge status={booking.status} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              )}
+
+              {/* Tours Bookings Queue */}
+              {activeBookingsTab === 'tours' && (
+                tourBookings.length === 0 ? (
+                  <div className="text-center py-16 space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto">
+                      <Compass className="w-7 h-7 text-emerald-400" />
+                    </div>
+                    <h4 className="font-display font-semibold text-white text-sm">No tour package bookings confirmed yet</h4>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto">Confirmed tour bookings will show up in this queue.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                          <th className="py-3 px-3 bg-slate-950/30 rounded-l-lg">Booking Ref</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Tour Package</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Lead Traveler</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Start Date</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Travelers</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Total Paid</th>
+                          <th className="py-3 px-3 bg-slate-950/30">Profit</th>
+                          <th className="py-3 px-3 bg-slate-950/30 rounded-r-lg">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tourBookings.map((booking, idx) => (
+                          <tr key={booking.id} className={`border-b border-white/5 hover:bg-emerald-500/5 transition-all ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-950/20'}`}>
+                            <td className="py-4 px-3">
+                              <span className="font-bold font-mono tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg">{booking.confirmationNumber}</span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-semibold text-white block">{booking.tourPackage.name}</span>
+                              <span className="text-[10px] text-slate-400 block mt-0.5">{booking.tourPackage.destination} · <span className="text-emerald-400">{booking.tourPackage.durationDays} Days</span></span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-semibold text-slate-200 block">{booking.leadTravelerName}</span>
+                              <span className="text-[10px] text-slate-500 block mt-0.5">{booking.leadTravelerEmail}</span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-medium text-white flex items-center gap-1.5">
+                                <Calendar className="w-3 h-3 text-emerald-400" />
+                                {new Date(booking.startDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <span className="font-semibold text-white">{booking.adults}A</span>
+                              {booking.children > 0 && <span className="text-slate-400 ml-1">· {booking.children}C</span>}
+                            </td>
+                            <td className="py-4 px-3 font-bold text-white">৳{booking.totalClientPaid.toLocaleString()}</td>
+                            <td className="py-4 px-3">
+                              <span className="font-bold text-emerald-400 flex items-center gap-1">
+                                <TrendingUp className="w-3 h-3" />
+                                ৳{booking.agentProfit.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="py-4 px-3">
+                              <StatusBadge status={booking.status} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Financial statement ledger */}
       {activeTab === 'ledger' && (
-        <div className="glass-card rounded-3xl p-6 border-white/5 space-y-6">
-          <div>
-            <h3 className="font-display font-semibold text-white text-base">Financial Statement Ledger</h3>
-            <p className="text-xs text-slate-400">Verify agency deposits, ticket balances, and margins in real time.</p>
+        <div className="space-y-6">
+          {/* Ledger Summary Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="glass-card rounded-2xl p-5 border-emerald-500/15">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center">
+                  <ArrowUpRight className="w-5 h-5 text-emerald-400" />
+                </div>
+                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Total Deposits</span>
+              </div>
+              <span className="text-2xl font-display font-bold text-emerald-400">৳{totalDeposits.toLocaleString()}</span>
+              {pendingDeposits > 0 && (
+                <span className="text-[10px] text-amber-400 font-semibold block mt-1">{pendingDeposits} pending approval</span>
+              )}
+            </div>
+
+            <div className="glass-card rounded-2xl p-5 border-rose-500/15">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/25 flex items-center justify-center">
+                  <ArrowDownRight className="w-5 h-5 text-rose-400" />
+                </div>
+                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Total Spent</span>
+              </div>
+              <span className="text-2xl font-display font-bold text-rose-400">৳{totalSpent.toLocaleString()}</span>
+              <span className="text-[10px] text-slate-500 block mt-1">{ledger.filter(t => t.amount < 0).length} debit transactions</span>
+            </div>
+
+            <div className="glass-card rounded-2xl p-5 border-brand-cyan/15">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl bg-brand-cyan/15 border border-brand-cyan/25 flex items-center justify-center">
+                  <Wallet className="w-5 h-5 text-brand-cyan" />
+                </div>
+                <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Current Balance</span>
+              </div>
+              <span className="text-2xl font-display font-bold text-white">৳{agent.balance.toLocaleString()}</span>
+              <span className="text-[10px] text-brand-cyan font-semibold block mt-1">{agent.currency} · Live Wallet</span>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs text-slate-300">
-              <thead>
-                <tr className="border-b border-white/10 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  <th className="py-3 px-2">Transaction ID</th>
-                  <th className="py-3 px-2">Reference</th>
-                  <th className="py-3 px-2">Date / Time</th>
-                  <th className="py-3 px-2">Type</th>
-                  <th className="py-3 px-2">Description</th>
-                  <th className="py-3 px-2">Amount</th>
-                  <th className="py-3 px-2">Wallet Balance</th>
-                  <th className="py-3 px-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ledger.map((txn) => (
-                  <tr key={txn.id} className="border-b border-white/5 hover:bg-white/1 transition-all">
-                    <td className="py-4 px-2 font-mono text-slate-400">{txn.id}</td>
-                    <td className="py-4 px-2 font-bold font-mono tracking-wider text-slate-200">{txn.ref}</td>
-                    <td className="py-4 px-2 text-slate-400">{new Date(txn.date).toLocaleString()}</td>
-                    <td className="py-4 px-2">
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                        txn.type === 'Deposit'
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          : txn.type === 'Void Ticket' || txn.type === 'Refund' || txn.type === 'Hotel Cancellation' || txn.type === 'Tour Cancellation'
-                          ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                      }`}>
-                        {txn.type}
-                      </span>
-                    </td>
-                    <td className="py-4 px-2 font-medium max-w-xs truncate">{txn.description}</td>
-                    <td className={`py-4 px-2 font-bold ${txn.amount > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {txn.amount > 0 ? '+' : ''}৳{txn.amount.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-2 font-semibold text-slate-200">৳{txn.balanceAfter.toLocaleString()}</td>
-                    <td className="py-4 px-2">
-                      <StatusBadge status={txn.status} />
-                    </td>
+          {/* Ledger Table */}
+          <div className="glass-card rounded-3xl border-white/5 overflow-hidden">
+            <div className="flex items-center gap-3 p-6 border-b border-white/5 bg-gradient-to-r from-slate-950/50 to-transparent">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-cyan/20 to-brand-navy-light flex items-center justify-center border border-white/10">
+                <CreditCard className="w-5 h-5 text-brand-cyan" />
+              </div>
+              <div>
+                <h3 className="font-display font-semibold text-white text-base">Financial Statement Ledger</h3>
+                <p className="text-[10px] text-slate-400">Verify agency deposits, ticket balances, and margins in real time.</p>
+              </div>
+            </div>
+
+            <div className="p-6 overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                    <th className="py-3 px-3 bg-slate-950/30 rounded-l-lg">Transaction ID</th>
+                    <th className="py-3 px-3 bg-slate-950/30">Reference</th>
+                    <th className="py-3 px-3 bg-slate-950/30">Date / Time</th>
+                    <th className="py-3 px-3 bg-slate-950/30">Type</th>
+                    <th className="py-3 px-3 bg-slate-950/30">Description</th>
+                    <th className="py-3 px-3 bg-slate-950/30">Amount</th>
+                    <th className="py-3 px-3 bg-slate-950/30">Wallet Balance</th>
+                    <th className="py-3 px-3 bg-slate-950/30 rounded-r-lg">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {ledger.map((txn, idx) => (
+                    <tr key={txn.id} className={`border-b border-white/5 hover:bg-white/[0.02] transition-all ${idx % 2 === 0 ? 'bg-transparent' : 'bg-slate-950/20'}`}>
+                      <td className="py-4 px-3 font-mono text-[10px] text-slate-500">{txn.id}</td>
+                      <td className="py-4 px-3">
+                        <span className="font-bold font-mono tracking-wider text-slate-200 bg-slate-800/50 px-2 py-1 rounded-lg text-[10px]">{txn.ref}</span>
+                      </td>
+                      <td className="py-4 px-3 text-slate-400">
+                        <span className="block">{new Date(txn.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</span>
+                        <span className="text-[10px] text-slate-500 block">{new Date(txn.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </td>
+                      <td className="py-4 px-3">
+                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold inline-block ${
+                          txn.type === 'Deposit'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                            : txn.type === 'Void Ticket' || txn.type === 'Refund' || txn.type === 'Hotel Cancellation' || txn.type === 'Tour Cancellation'
+                            ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20'
+                            : txn.type === 'Hotel Booking'
+                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+                            : txn.type === 'Tour Booking'
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
+                            : 'bg-rose-500/15 text-rose-400 border border-rose-500/20'
+                        }`}>
+                          {txn.type}
+                        </span>
+                      </td>
+                      <td className="py-4 px-3 font-medium max-w-xs">
+                        <span className="text-slate-300 truncate block">{txn.description}</span>
+                      </td>
+                      <td className="py-4 px-3">
+                        <span className={`font-bold flex items-center gap-1 ${txn.amount > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {txn.amount > 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                          {txn.amount > 0 ? '+' : ''}৳{txn.amount.toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="py-4 px-3 font-semibold text-white">৳{txn.balanceAfter.toLocaleString()}</td>
+                      <td className="py-4 px-3">
+                        <StatusBadge status={txn.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
       {/* Request Deposit form */}
       {activeTab === 'deposit' && (
-        <div className="max-w-xl mx-auto glass-card rounded-3xl p-6 border-white/5 space-y-6">
-          <div>
-            <h3 className="font-display font-semibold text-white text-base">Request B2B Balance Deposit</h3>
-            <p className="text-xs text-slate-400">
-              Submit bank receipts or mobile payment numbers to request credit topups.
-            </p>
-          </div>
-
-          {depositSuccessMsg && (
-            <div className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded-xl p-3.5 text-xs flex items-center gap-2 font-medium">
-              <ShieldCheck className="w-4 h-4 shrink-0" />
-              <span>Deposit request has been successfully transmitted. Admin approval will take 5-15 mins.</span>
-            </div>
-          )}
-
-          <form onSubmit={handleDepositSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-slate-400 ml-1">Deposit Amount (BDT)</label>
-              <div className="relative">
-                <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-brand-cyan" />
-                <input
-                  type="number"
-                  required
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  placeholder="e.g. 250000"
-                  className="w-full bg-[#011420] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-cyan"
-                />
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* Deposit Info Card */}
+          <div className="glass-card rounded-3xl border-brand-cyan/15 overflow-hidden">
+            <div className="bg-gradient-to-r from-brand-cyan/10 via-brand-navy-light/5 to-transparent p-6 border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-brand-cyan/15 border border-brand-cyan/25 flex items-center justify-center">
+                  <Wallet className="w-6 h-6 text-brand-cyan" />
+                </div>
+                <div>
+                  <h3 className="font-display font-semibold text-white text-lg">Request B2B Balance Deposit</h3>
+                  <p className="text-xs text-slate-400">Submit bank receipts or mobile payment numbers to request credit topups.</p>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-slate-400 ml-1">Select Bank Gateway</label>
-              <select
-                value={depositBank}
-                onChange={(e) => setDepositBank(e.target.value)}
-                className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-brand-cyan [color-scheme:dark]"
-              >
-                <option value="Standard Chartered Bank" className="bg-slate-900">Standard Chartered Bank (SCB)</option>
-                <option value="City Bank Ltd" className="bg-slate-900">The City Bank Ltd</option>
-                <option value="Mutual Trust Bank" className="bg-slate-900">Mutual Trust Bank (MTB)</option>
-                <option value="bKash (MFS Transfer)" className="bg-slate-900">bKash (Mobile Transfer)</option>
-              </select>
-            </div>
+            <div className="p-6 space-y-5">
+              {/* Current Balance Preview */}
+              <div className="flex items-center justify-between bg-slate-950/40 rounded-2xl px-5 py-4 border border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-brand-cyan/15 border border-brand-cyan/25 flex items-center justify-center">
+                    <DollarSign className="w-4 h-4 text-brand-cyan" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold block">Current Balance</span>
+                    <span className="text-lg font-display font-bold text-white">৳{agent.balance.toLocaleString()} <span className="text-xs text-brand-cyan font-medium">{agent.currency}</span></span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 block">Currency</span>
+                  <span className="text-sm font-display font-semibold text-slate-300">{agent.currency}</span>
+                </div>
+              </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase font-bold text-slate-400 ml-1">Deposit Reference / Bank Slip ID</label>
-              <input
-                type="text"
-                required
-                value={depositRef}
-                onChange={(e) => setDepositRef(e.target.value)}
-                placeholder="e.g. TXN-88492013-SCB"
-                className="w-full bg-[#011420] border border-white/10 rounded-xl px-3 py-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-brand-cyan"
-              />
-            </div>
+              {depositSuccessMsg && (
+                <div className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded-xl p-4 text-xs flex items-center gap-3 font-medium animate-in slide-in-from-top duration-300">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <span>Deposit request has been successfully transmitted. Admin approval will take 5-15 mins.</span>
+                </div>
+              )}
 
-            <button
-              type="submit"
-              className="w-full py-3.5 rounded-xl bg-brand-cyan text-slate-950 font-bold text-xs hover:bg-brand-cyan-light transition-all shadow-lg shadow-brand-cyan/20 cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Broadcast Deposit Approval Request</span>
-            </button>
-          </form>
+              <form onSubmit={handleDepositSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 ml-1 flex items-center gap-1.5">
+                    <DollarSign className="w-3 h-3 text-brand-cyan" />
+                    Deposit Amount (BDT)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-brand-cyan font-bold text-sm">৳</span>
+                    <input
+                      type="number"
+                      required
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(e.target.value)}
+                      placeholder="e.g. 250000"
+                      className="w-full bg-[#011420] border border-white/10 rounded-xl pl-9 pr-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-cyan/50 focus:ring-2 focus:ring-brand-cyan/10 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 ml-1 flex items-center gap-1.5">
+                    <Building2 className="w-3 h-3 text-brand-cyan" />
+                    Select Bank Gateway
+                  </label>
+                  <select
+                    value={depositBank}
+                    onChange={(e) => setDepositBank(e.target.value)}
+                    className="w-full bg-[#011420] border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white focus:outline-none focus:border-brand-cyan/50 focus:ring-2 focus:ring-brand-cyan/10 [color-scheme:dark] transition-all cursor-pointer"
+                  >
+                    <option value="Standard Chartered Bank" className="bg-slate-900">Standard Chartered Bank (SCB)</option>
+                    <option value="City Bank Ltd" className="bg-slate-900">The City Bank Ltd</option>
+                    <option value="Mutual Trust Bank" className="bg-slate-900">Mutual Trust Bank (MTB)</option>
+                    <option value="bKash (MFS Transfer)" className="bg-slate-900">bKash (Mobile Transfer)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] uppercase font-bold text-slate-400 ml-1 flex items-center gap-1.5">
+                    <CreditCard className="w-3 h-3 text-brand-cyan" />
+                    Deposit Reference / Bank Slip ID
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={depositRef}
+                    onChange={(e) => setDepositRef(e.target.value)}
+                    placeholder="e.g. TXN-88492013-SCB"
+                    className="w-full bg-[#011420] border border-white/10 rounded-xl px-4 py-3.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-brand-cyan/50 focus:ring-2 focus:ring-brand-cyan/10 transition-all"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-4 rounded-xl bg-gradient-to-r from-brand-cyan to-brand-cyan-light text-slate-950 font-bold text-sm hover:shadow-xl hover:shadow-brand-cyan/20 transition-all shadow-lg shadow-brand-cyan/15 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Broadcast Deposit Approval Request</span>
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       )}
     </div>
